@@ -26,7 +26,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Contract.Tx.ContractCreateTx
           | Aecore.Contract.Tx.ContractCallTx
           | Aecore.Channel.Tx.ChannelCreateTx
-          | Aecore.Channel.Tx.ChannelCloseMutalTx
+          | Aecore.Channel.Tx.ChannelCloseMutualTx
           | Aecore.Channel.Tx.ChannelCloseSoloTx
           | Aecore.Channel.Tx.ChannelSlashTx
           | Aecore.Channel.Tx.ChannelSettleTx
@@ -48,7 +48,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Contract.Tx.ContractCreateTx.t()
           | Aecore.Contract.Tx.ContractCallTx.t()
           | Aecore.Channel.Tx.ChannelCreateTx.t()
-          | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
+          | Aecore.Channel.Tx.ChannelCloseMutualTx.t()
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
           | Aecore.Channel.Tx.ChannelSlashTx.t()
           | Aecore.Channel.Tx.ChannelSettleTx.t()
@@ -75,7 +75,7 @@ defmodule Aecore.Tx.DataTx do
 
   # Parameters
   - type: The type of transaction that may be added to the blockchain
-  - payload: The strcuture of the specified transaction type
+  - payload: The structure of the specified transaction type
   - senders: The public addresses of the accounts originating the transaction. First element of this list is special - it's the main sender. Nonce is applied to main sender Account.
   - fee: The amount of tokens given to the miner
   - nonce: An integer bigger then current nonce of main sender Account. (see senders)
@@ -99,7 +99,7 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Contract.Tx.ContractCallTx,
       Aecore.Channel.Tx.ChannelCreateTx,
       Aecore.Channel.Tx.ChannelCloseSoloTx,
-      Aecore.Channel.Tx.ChannelCloseMutalTx,
+      Aecore.Channel.Tx.ChannelCloseMutualTx,
       Aecore.Channel.Tx.ChannelSlashTx,
       Aecore.Channel.Tx.ChannelSettleTx,
       Aecore.Channel.Tx.ChannelWithdrawTx,

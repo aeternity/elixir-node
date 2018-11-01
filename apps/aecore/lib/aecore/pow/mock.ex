@@ -1,6 +1,6 @@
 defmodule Aecore.Pow.Mock do
   @moduledoc """
-  Provides a mock proofd of work that always succeeds generation and uses predefined integers as proof. In validation checks that integers are as expected
+  Provides a mock proof of work that always succeeds generation and uses predefined integers as proof. In validation checks that integers are as expected
   """
 
   alias Aecore.Chain.Header

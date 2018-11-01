@@ -232,7 +232,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         ExRLP.decode(binary)
       rescue
         e ->
-          {:error, "#{__MODULE__}: rlp_decode: IIllegal serialization: #{Exception.message(e)}"}
+          {:error, "#{__MODULE__}: rlp_decode: Illegal serialization: #{Exception.message(e)}"}
       end
 
     {:ok, signedtx_tag} = TypeToTag.type_to_tag(SignedTx)
@@ -251,10 +251,10 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         end
 
       [^signedtx_tag_bin, ^signedtx_ver_bin | _] ->
-        {:error, "#{__MODULE__}: Invalid signedtx serialization"}
+        {:error, "#{__MODULE__}: Invalid SignedTx serialization"}
 
       [^signedtx_tag_bin | _] ->
-        {:error, "#{__MODULE__}: Unknown signedtx version"}
+        {:error, "#{__MODULE__}: Unknown SignedTx version"}
 
       list when is_list(list) ->
         {:error, "#{__MODULE__}: Invalid tag"}

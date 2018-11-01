@@ -120,7 +120,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         {:error, "#{__MODULE__}: Invalid oracle identifier: #{inspect(oracle_address)}"}
 
       !Keys.key_size_valid?(address) ->
-        {:error, "#{__MODULE__}: oracle_adddress size invalid"}
+        {:error, "#{__MODULE__}: oracle_address size invalid"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}

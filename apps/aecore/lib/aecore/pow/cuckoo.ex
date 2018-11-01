@@ -1,6 +1,6 @@
 defmodule Aecore.Pow.Cuckoo do
   @moduledoc """
-  A librarye providing Cuckoo Cycle PoW generation and verification.
+  A library providing Cuckoo Cycle PoW generation and verification.
   John Tromp:  https://github.com/tromp/cuckoo
   White paper: https://github.com/tromp/cuckoo/blob/master/doc/cuckoo.pdf?raw=true
 

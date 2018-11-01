@@ -13,9 +13,9 @@ defmodule Aecore.Persistence.Worker do
 
   @typedoc """
   To operate with a patricia merkle tree
-  we do need db reference
+  we need a db reference
 
-  Those names referes to the keys into patricia_families
+  Those names refer to the keys in the patricia_families
   map in our state
   """
 
