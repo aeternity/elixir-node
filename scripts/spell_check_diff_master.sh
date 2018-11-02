@@ -1,7 +1,7 @@
 #/usr/bin/env bash
 
 function filter_codebase {
-find . -iname "*.ex" -o -iname "*.exs" | grep -E "/lib/|/test/|/config/" | grep -v deps | grep -v _build | xargs -I cmd sh -c "cat cmd | nl -ba -w 1 | sed 's@^[0-9]*@cmd:&@'" | pcregrep -M "\"\"\".*?(\n|.)*?.*?\"\"\"|#[^{].*?\n|:error, \"(\n|.)*?\"" | sort > $1
+find $(git rev-parse --show-toplevel) -iname "*.ex" -o -iname "*.exs" | grep -E "/lib/|/test/|/config/" | grep -v deps | grep -v _build | xargs -I cmd sh -c "cat cmd | nl -ba -w 1 | sed 's@^[0-9]*@cmd:&@'" | pcregrep -M "\"\"\".*?(\n|.)*?.*?\"\"\"|#[^{].*?\n|:error, \"(\n|.)*?\"" | sort > $1
 }
 
 ORIG=$(git branch | grep \* | cut -d ' ' -f2);
