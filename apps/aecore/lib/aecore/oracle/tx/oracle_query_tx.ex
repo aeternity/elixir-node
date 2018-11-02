@@ -53,7 +53,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     :response_ttl
   ]
 
-  @spec get_chain_state_name() :: atom()
+  @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
   @spec sender_type() :: Identifier.type()
@@ -266,7 +266,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     tx_fee_is_met && tx_query_fee_is_met
   end
 
-  @spec id(Keys.pubkey(), non_neg_integer(), Identifier.t()) :: binary()
+  @spec id(Keys.pubkey(), non_neg_integer(), Keys.pubkey()) :: binary()
   def id(sender, nonce, oracle_address) do
     bin = sender <> <<nonce::@nonce_size>> <> oracle_address
     Hash.hash(bin)

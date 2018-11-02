@@ -86,7 +86,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     end
   end
 
-  @spec get_chain_state_name :: atom()
+  @spec get_chain_state_name :: :naming
   def get_chain_state_name, do: :naming
 
   @spec sender_type() :: Identifier.type()

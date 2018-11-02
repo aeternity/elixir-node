@@ -22,7 +22,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   @typedoc "Expected structure for the Update Transaction"
   @type payload :: %{
-          hash: Identifier.t(),
+          hash: Identifier.t() | binary(),
           expire_by: non_neg_integer(),
           client_ttl: non_neg_integer(),
           pointers: String.t()
@@ -34,7 +34,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   @typedoc "Structure of the NameUpdateTx Transaction type"
   @type t :: %NameUpdateTx{
-          hash: binary(),
+          hash: Identifier.t(),
           expire_by: non_neg_integer(),
           client_ttl: non_neg_integer(),
           pointers: String.t()
@@ -114,7 +114,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     end
   end
 
-  @spec get_chain_state_name :: atom()
+  @spec get_chain_state_name :: :naming
   def get_chain_state_name, do: :naming
 
   @spec sender_type() :: Identifier.type()
@@ -221,7 +221,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     fee >= GovernanceConstants.minimum_fee()
   end
 
-  @spec encode_to_list(NameUpdateTx.t(), DataTx.t()) :: list()
+  @spec encode_to_list(NameUpdateTx.t(), DataTx.t()) :: list(binary())
   def encode_to_list(
         %NameUpdateTx{
           hash: hash,

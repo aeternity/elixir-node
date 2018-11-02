@@ -32,7 +32,7 @@ defmodule Aecore.Tx.Transaction do
           | Aecore.Oracle.Tx.OracleExtendTx.t()
           | Aecore.Oracle.Tx.OracleRegistrationTx.t()
           | Aecore.Oracle.Tx.OracleResponseTx.t()
-          | Aecore.Oracle.Tx.OracleResponseTx.t()
+          | Aecore.Oracle.Tx.OracleQueryTx.t()
           | Aecore.Naming.Tx.NamePreClaimTx.t()
           | Aecore.Naming.Tx.NameClaimTx.t()
           | Aecore.Naming.Tx.NameUpdateTx.t()
