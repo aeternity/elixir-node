@@ -24,9 +24,9 @@ Environment variables can be set at compile time by specifying the variable and 
 The following environment variables can be configured:
 * PORT - the port on which the Phoenix server will listen for any HTTP requests, default is `4000`
 * SYNC_PORT - the port that will be used for any sync related P2P message receiving, default is `3015`
-* ACCOUNTS_PATH - path to the JSON file containing any preset account balances, default is `/apps/aecore/priv/genesis`
+* ACCOUNTS_PATH - path to the JSON file containing any preset account balances, default is `apps/aecore/priv/genesis`
 * SIGN_KEYS_PASS - the password that will be used for private key encryption/decryption, default is `secret`
 * PEER_KEYS_PASS - the password that will be used for peer private key encryption/decryption, default is `secret`
-* PEER_KEYS_PATH - path to the peer key files, default is `/apps/aecore/priv/peerkeys`
-* SIGN_KEYS_PATH - path to the sign key files, default is `/apps/aecore/priv/signkeys`
-* PERSISTENCE_PATH - path to Rox database, default is `/apps/aecore/priv/rox_db`
+* PEER_KEYS_PATH - path to the peer key files, default is `apps/aecore/priv/peerkeys`
+* SIGN_KEYS_PATH - path to the sign key files, default is `apps/aecore/priv/signkeys`
+* PERSISTENCE_PATH - path to Rox database, default is `apps/aecore/priv/rox_db`
