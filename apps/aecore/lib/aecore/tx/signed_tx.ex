@@ -222,7 +222,6 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec check_multiple_signatures(list(binary()), binary(), list(Keys.pubkey())) :: boolean()
   defp check_multiple_signatures(signatures, data_binary, [pubkey | remaining_pubkeys]) do
     case single_signature_check(signatures, data_binary, pubkey) do
       {:ok, remaining_signatures} ->
@@ -241,8 +240,6 @@ defmodule Aecore.Tx.SignedTx do
     false
   end
 
-  @spec single_signature_check(list(binary()), binary(), Keys.pubkey()) ::
-          {:ok, list(binary())} | :error
   defp single_signature_check(signatures, data_binary, pubkey) do
     if Keys.key_size_valid?(pubkey) do
       do_single_signature_check(signatures, data_binary, pubkey)
@@ -252,8 +249,6 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec do_single_signature_check(list(binary()), binary(), Keys.pubkey()) ::
-          {:ok, list(binary())} | :error
   defp do_single_signature_check([signature | rest_signatures], data_binary, pubkey) do
     if Keys.verify(data_binary, signature, pubkey) do
       {:ok, rest_signatures}
