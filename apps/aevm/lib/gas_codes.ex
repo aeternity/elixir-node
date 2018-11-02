@@ -46,8 +46,8 @@ defmodule Aevm.GasCodes do
   # non-zero from zero.
   defmacro _GSSET do quote do: 20000 end
 
-  # Paid for an SSTORE operation when the storage value’s zeroness
-  # remains unchanged or is set to zero.
+  # Paid for an SSTORE operation when the storage value
+  # remains zero or is set to zero.
   defmacro _GSRESET do quote do: 5000 end
 
   # Refund given (added into refund counter) when the storage value is
@@ -86,7 +86,7 @@ defmodule Aevm.GasCodes do
 
   # Partial payment when multiplied by dlog256(exponent)e for the EXP
   # operation.
-  defmacro _GEXPBYTE do quote do: 10 end # From the go implementation. 50 from the yellopaper
+  defmacro _GEXPBYTE do quote do: 10 end # From the go implementation. 50 from the yellow paper
 
   # Paid for every additional word when expanding memory.
   defmacro _GMEMORY do quote do: 3 end

@@ -89,7 +89,7 @@ defmodule Aecore.Keys do
   the function will return the miners :sign and :peer keypair. If a suffix is added,
   additional keypairs are going to be returned.
 
-  The accepter keypair types are:
+  The accepted keypair types are:
     * `:sign` - returns a tuple with signing keys {pub, priv}
     * `:peer` - returns a tuple with peers keys {pub, priv}
 
@@ -154,7 +154,7 @@ defmodule Aecore.Keys do
   defp gen_dir(false, keys_dir), do: File.mkdir!(keys_dir)
   defp gen_dir(true, _), do: :ok
 
-  # Reads the keys from their respectve directory and returns
+  # Reads the keys from their respective directory and returns
   # their decrypted result. If either of the files is not readable - return an error
   defp read_keypair(pwd, pub_file, priv_file) do
     case {File.read(pub_file), File.read(priv_file)} do

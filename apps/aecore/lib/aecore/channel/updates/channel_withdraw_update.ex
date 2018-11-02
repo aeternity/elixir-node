@@ -1,7 +1,7 @@
 defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   @moduledoc """
-  State channel update implementing withdraws in the state channel. This update can be included in ChannelOffchainTx.
-  This update is used by ChannelWithdrawTx for transfering unlocking some of the state channel's tokens.
+  State channel update implementing withdraws in the state channel. This update can be included in ChannelOffChainTx.
+  This update is used by ChannelWithdrawTx for unlocking some of the state channel's tokens.
   """
 
   alias Aecore.Channel.Updates.ChannelWithdrawUpdate

@@ -55,7 +55,7 @@ defmodule PersistenceTest do
     # For specific account
     assert match?(%{balance: ^correct_balance}, get_account_state(persistance_state.account1))
 
-    # Non existant accounts are empty
+    # Non existing accounts are empty
     assert :not_found = get_account_state(persistance_state.account2)
 
     # For all accounts

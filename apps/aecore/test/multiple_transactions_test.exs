@@ -91,7 +91,7 @@ defmodule MultipleTransactionsTest do
     Pool.get_and_empty_pool()
     assert 100 == Account.balance(TestUtils.get_accounts_chainstate(), account2_pub_key)
 
-    # acccount2 => 100; account3 => 90
+    # account2 => 100; account3 => 90
 
     # account2 has 100 tokens, spends 30 (+10 fee) to account3,
     # and two times 20 (+10 fee) to account4 should succeed

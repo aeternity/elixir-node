@@ -265,7 +265,7 @@ defmodule AecoreChannelTest do
     # slashing with old state fails
     assert_custom_tx_fails(solo_close_tx2)
 
-    # make some transfers so the solo_close tx will include a OffchainTx
+    # make some transfers so the solo_close tx will include a OffChainTx
     perform_transfer(id, 25, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
     assert_offchain_state(id, 75, 225, 8)
 

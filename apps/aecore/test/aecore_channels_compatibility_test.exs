@@ -12,7 +12,7 @@ defmodule AecoreChannelCompatibilityTest do
   alias Aecore.Channel.Worker, as: Channels
 
   alias Aecore.Channel.Tx.{
-    ChannelCloseMutalTx,
+    ChannelCloseMutualTx,
     ChannelSettleTx
   }
 
@@ -155,7 +155,7 @@ defmodule AecoreChannelCompatibilityTest do
 
     tx =
       DataTx.init(
-        ChannelCloseMutalTx,
+        ChannelCloseMutualTx,
         %{
           channel_id: id,
           initiator_amount: initiator_amount,
@@ -294,7 +294,7 @@ defmodule AecoreChannelCompatibilityTest do
 
     assert_offchain_txs_equal(fully_signed_transfer_tx2, epoch_transfer2)
 
-    # close mutal
+    # close mutual
 
     epoch_mutal_close_tx =
       Bits.decode58(

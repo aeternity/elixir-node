@@ -34,8 +34,8 @@ defmodule Aetestframework.Worker do
 
   @doc """
   Post a command to a specific node.
-  Used to send command that will return some response and we n(eed to
-  handle it. Like getting the top header hash
+  Used to send commands which will return some response that we need to
+  process. Like getting the top header hash
   """
   @spec get(String.t(), atom(), atom(), non_neg_integer()) :: any()
   def get(cmd, match_by, node, timeout \\ @default_timeout) do
