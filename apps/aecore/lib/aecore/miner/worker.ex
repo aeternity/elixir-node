@@ -16,6 +16,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Pow.Pow
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aeutil.Environment
 
   require Logger
 
@@ -163,7 +164,7 @@ defmodule Aecore.Miner.Worker do
     nonce = next_nonce(cblock.header.nonce)
 
     cblock =
-      case rem(nonce, Application.get_env(:aecore, :pow)[:new_candidate_nonce_count]) do
+      case rem(nonce, new_candidate_nonce_count()) do
         0 -> candidate()
         _ -> cblock
       end
@@ -357,4 +358,7 @@ defmodule Aecore.Miner.Worker do
 
   def next_nonce(@mersenne_prime), do: 0
   def next_nonce(nonce), do: nonce + 1
+
+  def new_candidate_nonce_count,
+    do: Environment.get_env_or_default("NEW_CANDIDATE_NONCE_COUNT", 100)
 end

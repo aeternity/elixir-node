@@ -1,6 +1,8 @@
 defmodule Aehttpserver.Web.Endpoint do
   use Phoenix.Endpoint, otp_app: :aehttpserver
 
+  alias Aeutil.Environment
+
   socket("/socket", Aehttpserver.Web.UserSocket)
 
   plug(Plug.Logger, log: :debug)
@@ -21,9 +23,12 @@ defmodule Aehttpserver.Web.Endpoint do
   It receives the endpoint configuration from the config files
   and must return the updated configuration.
   """
-  def load_from_system_env(config) do
-    port = System.get_env("PORT") || raise "expected the PORT environment variable to be set"
-
-    {:ok, Keyword.put(config, :http, [:inet6, port: port])}
+  def init(_key, config) do
+    if config[:load_from_system_env] do
+      port = String.to_integer(Environment.get_env_or_default("PORT", "4000"))
+      {:ok, Keyword.put(config, :http, [:inet6, port: port])}
+    else
+      {:ok, config}
+    end
   end
 end

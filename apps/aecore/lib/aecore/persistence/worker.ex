@@ -8,6 +8,7 @@ defmodule Aecore.Persistence.Worker do
 
   alias Aecore.Chain.{Block, Header, Target}
   alias Aecore.Persistence.Supplier
+  alias Aeutil.Environment
   alias Aeutil.Scientific
   alias Rox.Batch
 
@@ -417,8 +418,7 @@ defmodule Aecore.Persistence.Worker do
     {:reply, handler, state}
   end
 
-  defp persistence_path,
-    do: Application.app_dir(:aecore, "priv") <> Application.get_env(:aecore, :persistence)[:path]
+  def persistence_path, do: Environment.get_env_or_core_priv_dir("PERSISTENCE_PATH", "rox_db")
 
   defp build_state(
          db_refs,
