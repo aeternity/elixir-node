@@ -5,7 +5,7 @@ defmodule Aecore.Pow.PowAlgorithm do
 
   alias Aecore.Chain.Header
 
-  @type error :: {:error, String.t()}
+  @type error :: {:error, String.t() | atom()}
 
   @doc """
   Proof of Work verification (with difficulty check)

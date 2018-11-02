@@ -110,7 +110,7 @@ defmodule Aecore.Peers.PeerConnection do
     |> send_request_msg(pid)
   end
 
-  @spec get_header_by_height(non_neg_integer(), binary(), pid()) ::
+  @spec get_header_by_height(pid(), non_neg_integer(), binary()) ::
           {:ok, Header.t()} | {:error, term()}
   def get_header_by_height(pid, height, top_hash) when is_pid(pid) do
     @get_header_by_height

@@ -118,7 +118,7 @@ defmodule Aecore.Sync.Task do
     end
   end
 
-  @spec match_chain_to_task(Chain.t(), Sync.t(), list()) ::
+  @spec match_chain_to_task(Chain.t(), list(Task.t()), list()) ::
           :no_match
           | {:inconclusive, Chain.t(), {:get_header, chain_id(), peer_id(), height()}}
           | {:match, Task.t()}
