@@ -285,9 +285,29 @@ iex> {_, priv_key} = Keys.keypair(:sign)
 
 #### Contract Transactions
 
-##### Scenario with a Solidity smart contract, containing getter and setter methods, (used calldata parameters are only applicable to this smart contract)
+##### Scenario with the following Solidity smart contract, containing getter and setter methods, (used calldata parameters are only applicable to this smart contract):
 
-###### Note: Sophia ABI and primitive operations are yet to be added
+```
+pragma solidity ^0.4.0;
+
+contract SimpleStorage {
+    uint storedData;
+
+    function set(uint x) public {
+        storedData = x;
+    }
+
+    function get() public view returns (uint) {
+        return storedData;
+    }
+}
+```
+
+##### Note:
+###### Sophia ABI and primitive operations are yet to be added
+###### Solidity events, logging and account creating, are not yet supported
+
+##### In order to easily compile Solidity contracts, see their functions' signature hashes, etc., without any setup, you can use the [Remix IDE](https://remix.ethereum.org/)
 
 - Create and mine a `ConcractCreateTx`:
 ```elixir
@@ -304,6 +324,11 @@ iex> fee = 10
 iex> Contract.create(code, vm_version, deposit, amount, gas, gas_price, call_data, fee)
 iex> Miner.mine_sync_block_to_chain()
 ```
+- `code` is the byte code that the contract is compiled to
+
+- `call_data` is the parameter that tells the VM which function to interpret, along with what parameter values to be passed
+
+- depending on the `vm_version`, we can have a value, passed to a init function (Sophia), or be empty, like in this case (Solidity)
 
 - Create and mine a `ContractCallTx` (set):
 ```elixir
@@ -320,6 +345,9 @@ iex> fee = 10
 iex> Call.call_contract(contract_id, vm_version, amount, gas, gas_price, call_data, call_stack, fee)
 iex> Miner.mine_sync_block_to_chain()
 ```
+- `call_stack` is used internally and should always be empty when executing from top level (populated automatically when there are nested calls)
+
+- the first four bytes of `call_data` are the first four bytes of the Keccak-256 hash of the signature of the function (according to Solidity ABI); the next 32 bytes represent the value, which is to be passed to this function (arguments should be encoded, according to Solidity ABI); in this case, `<<96, 254, 71, 177>>` stands for the `set` function, and the next 32 bytes `<<33::256>>` represent the integer value of `33`
 
 - Create and mine a `ContractCallTx` (get):
 ```elixir
@@ -341,8 +369,6 @@ iex> call_tree_id = CallStateTree.construct_call_tree_id(contract_id, call_id)
 iex> CallStateTree.get_call(Chain.chain_state.calls, call_tree_id)
 ```
 
-- the first four bytes of the ```call_data``` specify which function is to be called, followed by its arguments (if there are any). Should be encoded, according to the Solidity ABI
+- `call_data` has a value of `<<109, 76, 230, 60>>`, which stands for the `get` function
 
-- ```code``` is the byte code that the contract is compiled to
-
-- ```call_stack``` is used internally and should be empty when executing from top level (populated when there are nested calls)
+- `call_stack` is again empty, as this is the top level call

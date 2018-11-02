@@ -37,4 +37,4 @@ alias Aecore.Chain.Identifier
 
 alias Aevm.State
 
-require Aecore.Contract.ContractConstants, as: Constants
+require Aecore.Contract.ContractConstants, as: ContractConstants
