@@ -10,6 +10,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Chain.{Block, Header, Genesis}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Governance.GovernanceConstants
@@ -18,7 +19,7 @@ defmodule AecoreValidationTest do
     Code.require_file("test_utils.ex", "./test")
     TestUtils.clean_blockchain()
 
-    path = Application.get_env(:aecore, :persistence)[:path]
+    path = Persistence.persistence_path()
 
     if File.exists?(path) do
       File.rm_rf(path)

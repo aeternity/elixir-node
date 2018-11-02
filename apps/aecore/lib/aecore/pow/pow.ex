@@ -1,6 +1,6 @@
 defmodule Aecore.Pow.Pow do
   @moduledoc """
-  A meta Proof of work algorithm that invokes proper algorithm for current environment
+  An abstraction layer for Proof of Work schemes that invokes the chosen algorithm based on the current environment variables
   """
 
   alias Aecore.Chain.Header

@@ -160,10 +160,9 @@ defmodule Aetestframework.Worker do
 
     Enum.each(state, fn {_node, %{port_id: port_id, node_port: port}} ->
       Port.close(port_id)
-      path_to_priv_dir = project_dir() <> Application.app_dir(:aecore, "priv")
-      File.rm_rf(path_to_priv_dir <> "test_signkeys_#{port}")
-      File.rm_rf(path_to_priv_dir <> "test_peerkeys_#{port}")
-      File.rm_rf(path_to_priv_dir <> "test_rox_db_#{port}")
+      File.rm_rf(Path.join([Application.app_dir(:aecore, "priv"), "test_signkeys_#{port}"]))
+      File.rm_rf(Path.join([Application.app_dir(:aecore, "priv"), "test_peerkeys_#{port}"]))
+      File.rm_rf(Path.join([Application.app_dir(:aecore, "priv"), "test_rox_db_#{port}"]))
     end)
 
     {:reply, :ok, %{}}
