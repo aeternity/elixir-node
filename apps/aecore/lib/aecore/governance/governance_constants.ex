@@ -66,7 +66,7 @@ defmodule Aecore.Governance.GovernanceConstants do
   @spec oracle_extend_base_fee :: non_neg_integer()
   def oracle_extend_base_fee, do: @oracle_extend_base_fee
 
-  @spec oracle_ttl_fee_per_block :: non_neg_integer()
+  @spec oracle_ttl_fee_per_block :: float()
   def oracle_ttl_fee_per_block, do: @oracle_ttl_fee_per_block
 
   @spec time_validation_future_limit_ms :: non_neg_integer()
