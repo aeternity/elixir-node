@@ -80,17 +80,24 @@ defmodule Aecore.Miner.Worker do
   # Mine single block without adding it to the chain - Sync
   @spec mine_sync_block(Block.t()) :: {:ok, Block.t()} | {:error, reason :: atom()}
   def mine_sync_block(%Block{header: %Header{} = header} = cblock) do
-    if GenServer.call(__MODULE__, :get_state) == :idle do
-      mine_sync_block(Pow.generate(header), cblock)
-    else
-      {:error, :miner_is_busy}
+    cond do
+      GenServer.call(__MODULE__, :get_state) != :idle ->
+        {:error, :miner_is_busy}
+
+      (pow = Pow.generate(header)) != {:error, :miner_was_stopped} ->
+        mine_sync_block(pow, cblock)
+
+      true ->
+        # When the miner crashed on the first run we can be sure that this is not a random crash
+        {:error, :miner_crashed}
     end
   end
 
   defp mine_sync_block(
-         {:error, :no_solution},
+         {:error, reason},
          %Block{header: %Header{nonce: nonce} = header} = cblock
-       ) do
+       )
+       when reason == :no_solution or reason == :miner_was_stopped do
     cheader = %{header | nonce: next_nonce(nonce)}
     cblock = %{cblock | header: cheader}
     mine_sync_block(Pow.generate(cheader), cblock)
@@ -206,7 +213,9 @@ defmodule Aecore.Miner.Worker do
     worker_reply(reply, %{state | job: cleanup_after_worker(job)})
   end
 
-  defp worker_reply({:error, :no_solution}, state), do: mining(state)
+  defp worker_reply({:error, reason}, state)
+       when reason == :no_solution or reason == :miner_was_stopped,
+       do: mining(state)
 
   defp worker_reply({:ok, %Header{} = miner_header}, %{block_candidate: cblock} = state) do
     Logger.info(fn -> "#{__MODULE__}: Mined block ##{cblock.header.height},

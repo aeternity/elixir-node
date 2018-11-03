@@ -89,7 +89,8 @@ defmodule Aecore.Pow.Cuckoo do
       {:sync, false},
       {:cd, full_bin_dir},
       {:env, [{"SHELL", "/bin/sh"}]},
-      {:monitor, true}
+      {:monitor, true},
+      {:pty, false}
     ]
   end
 
