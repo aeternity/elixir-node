@@ -190,8 +190,8 @@ iex> Miner.mine_sync_block_to_chain()
 
 ##### Standard scenario
 
-0. Start 2 Elixir nodes. Both syncing with each other and epoch.
-1. (both) Set basic parameters:
+0. Start at least 2 Elixir nodes and 1 Epoch node. Both syncing with each other and epoch. 
+1. (both) Set basic parameters: 
 
 ```elixir
 iex> temporary_id = <<1,2,3>>
@@ -212,24 +212,43 @@ iex> {_, priv_key} = Keys.keypair(:sign)
 6. (responder) `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, initiator_amount, responder_amount, locktime, half_signed_open_tx, priv_key)`
 7. (responder) `Miner.mine_sync_block_to_chain()`
 8. Check all nodes recognize new block **with** the ChannelOpenTx
-9. Make a transfer as follows:
+9. Now the channel is considered to be open. You can check compatibility of any or multiple of the available operations described in the next section.
+10. After testing the available operation close the channel.
+11. (initiator) `{:ok, half_signed_close_tx} = Channel.close(channel_id, {5, 5}, nonce, priv_key)`
+12. Copy `half_signed_close_tx` to responder
+13. (responder) `{:ok, fully_signed_close_tx} = Channel.recv_close_tx(channel_id, half_signed_close_tx, {5, 5}, priv_key)`
+14. (responder) `Miner.mine_sync_block_to_chain()`
+15. Check all nodes recognize new block **with** the ChannelMutalCloseTx
 
-    a. (initiator) `{:ok, half_signed_state} = Channel.transfer(channel_id, 50, priv_key)`
+##### Available operations on an open channel
+These operations can be initiated by any party. Through the scope of this section we will refer to the party which started the operation as the first party.
+###### Transfer:
+1. (first party) `{:ok, half_signed_state} = Channel.transfer(channel_id, 50, priv_key)`
+2. Copy `half_signed_state` to second party.
+3. (second party) `{:ok, signed_state} = Channel.receive_half_signed_tx(half_signed_state, priv_key)`
+4. Copy `signed_state` to first party.
+5. (first party) `:ok = Channel.receive_fully_signed_tx(signed_state)`
 
-    b. Copy `half_signed_state` to responder.
+###### Withdraw
+1. (first party) `{:ok, half_signed_withdraw_tx} = Channel.withdraw(channel_id, amount, fee, nonce, priv_key)`
+2. Copy `half_signed_withdraw_tx` to second party
+3. (second party) `{:ok, fully_signed_withdraw_tx} = Channel.receive_half_signed_tx(half_signed_withdraw_tx, priv_key)`
+4. Check if `fully_signed_withdraw_tx` is in the transaction pool and is recognised by all nodes in the network. 
+5. Copy `fully_signed_withdraw_tx` to the first party
+6. (first party) `:ok = Channel.receive_fully_signed_tx(fully_signed_withdraw_tx)`
+7. Wait for the transaction to be mined. Make sure that all nodes recognise the new block with `fully_signed_withdraw_tx`. Make sure that the onchain channel total amount was changed `Chain.top_block_chain_state.channels |> PatriciaMerkleTree.print_debug`. 
+8. (both parties) `:ok = Channel.receive_confirmed_tx(fully_signed_withdraw_tx)`
 
-    c. (responder) `{:ok, signed_state} = Channel.receive_half_signed_tx(half_signed_state, priv_key)`
-
-    c. Copy `signed_state` to initiator.
-
-    d. (initiator) `:ok = Channel.receive_fully_signed_tx(signed_state)`
-
-10. (initiator) `{:ok, half_signed_close_tx} = Channel.close(channel_id, {5, 5}, nonce, priv_key)`
-11. Copy `half_signed_close_tx` to responder
-12. (responder) `{:ok, fully_signed_close_tx} = Channel.recv_close_tx(channel_id, half_signed_close_tx, {5, 5}, priv_key)`
-13. (responder) `Miner.mine_sync_block_to_chain()`
-14. Check all nodes recognize new block **with** the ChannelMutalCloseTx
-
+###### Deposit
+1. (first party) `{:ok, half_signed_deposit_tx} = Channel.deposit(channel_id, amount, fee, nonce, priv_key)`
+2. Copy `half_signed_deposit_tx` to second party
+3. (second party) `{:ok, fully_signed_deposit_tx} = Channel.receive_half_signed_tx(half_signed_deposit_tx, priv_key)`
+4. Check if `fully_signed_deposit_tx` is in the transaction pool and is recognised by all nodes in the network. 
+5. Copy `fully_signed_deposit_tx` to the first party
+6. (first party) `:ok = Channel.receive_fully_signed_tx(fully_signed_deposit_tx)`
+7. Wait for the transaction to be mined. Make sure that all nodes recognise the new block with `fully_signed_withdraw_tx`. Make sure that the onchain channel total amount was changed `Chain.top_block_chain_state.channels |> PatriciaMerkleTree.print_debug`. 
+8. (both parties) `:ok = Channel.receive_confirmed_tx(fully_signed_deposit_tx)`
+    
 ##### Communication lost / party misbehaving scenario
 
 0. Start 2 Elixir nodes. Both syncing with each other and epoch.

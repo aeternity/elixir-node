@@ -9,7 +9,6 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Tx.DataTx
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Contract.{Contract, Call, CallStateTree, Dispatch, ContractStateTree}
   alias Aecore.Tx.Transaction
@@ -65,7 +64,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
     :gas,
     :gas_price,
     :call_data,
-    :call_stack
+    call_stack: []
   ]
 
   use ExConstructor
@@ -209,7 +208,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
 
   @spec preprocess_check(
           Chainstate.accounts(),
-          tx_type_state(),
+          Chainstate.t(),
           non_neg_integer(),
           ContractCallTx.t(),
           DataTx.t(),
@@ -217,7 +216,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
-        _calls,
+        chainstate,
         _block_height,
         %ContractCallTx{amount: amount, gas: gas, gas_price: gas_price, call_stack: call_stack} =
           call_tx,
@@ -225,8 +224,6 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
         context
       )
       when is_non_neg_integer(gas_price) do
-    chain_state = Chain.chain_state()
-
     required_amount = fee + gas * gas_price + amount
 
     checks =
@@ -235,12 +232,12 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
           [
             fn -> check_validity(call_stack == [], "Non empty call stack") end,
             fn -> check_account_balance(accounts, sender, required_amount) end,
-            fn -> check_call(call_tx, chain_state) end
+            fn -> check_call(call_tx, chainstate) end
           ]
 
         :contract ->
           [
-            fn -> check_call(call_tx, chain_state) end,
+            fn -> check_call(call_tx, chainstate) end,
             fn -> check_contract_balance(accounts, sender, amount) end
           ]
       end
@@ -309,10 +306,10 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
     with {:ok, contract} <- Identifier.decode_from_binary(encoded_contract) do
       payload = %ContractCallTx{
         contract: contract,
-        vm_version: vm_version,
-        amount: amount,
-        gas: gas,
-        gas_price: gas_price,
+        vm_version: :binary.decode_unsigned(vm_version),
+        amount: :binary.decode_unsigned(amount),
+        gas: :binary.decode_unsigned(gas),
+        gas_price: :binary.decode_unsigned(gas_price),
         call_data: call_data
       }
 

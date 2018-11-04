@@ -1,8 +1,6 @@
 use Mix.Config
 
-config :aehttpserver, Aehttpserver.Web.Endpoint,
-  on_init: {Aehttpserver.Web.Endpoint, :load_from_system_env, []},
-  url: [host: "localhost", port: 4000]
+config :aehttpserver, Aehttpserver.Web.Endpoint, url: [host: "localhost"]
 
 config :logger, level: :info
 

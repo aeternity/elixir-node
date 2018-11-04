@@ -25,10 +25,10 @@ defmodule Aeutil.TypeToTag do
   def tag_to_type(42), do: {:ok, Aecore.Contract.Tx.ContractCreateTx}
   def tag_to_type(43), do: {:ok, Aecore.Contract.Tx.ContractCallTx}
   def tag_to_type(50), do: {:ok, Aecore.Channel.Tx.ChannelCreateTx}
-  # Channel deposit transaction - 51
-  # Channel withdraw transaction - 52
+  def tag_to_type(51), do: {:ok, Aecore.Channel.Tx.ChannelDepositTx}
+  def tag_to_type(52), do: {:ok, Aecore.Channel.Tx.ChannelWithdrawTx}
   # Channel force progress transaction - 521
-  def tag_to_type(53), do: {:ok, Aecore.Channel.Tx.ChannelCloseMutalTx}
+  def tag_to_type(53), do: {:ok, Aecore.Channel.Tx.ChannelCloseMutualTx}
   def tag_to_type(54), do: {:ok, Aecore.Channel.Tx.ChannelCloseSoloTx}
   def tag_to_type(55), do: {:ok, Aecore.Channel.Tx.ChannelSlashTx}
   def tag_to_type(56), do: {:ok, Aecore.Channel.Tx.ChannelSettleTx}
@@ -67,10 +67,10 @@ defmodule Aeutil.TypeToTag do
   def type_to_tag(Aecore.Contract.Tx.ContractCreateTx), do: {:ok, 42}
   def type_to_tag(Aecore.Contract.Tx.ContractCallTx), do: {:ok, 43}
   def type_to_tag(Aecore.Channel.Tx.ChannelCreateTx), do: {:ok, 50}
-  # Channel deposit transaction - 51
-  # Channel withdraw transaction - 52
+  def type_to_tag(Aecore.Channel.Tx.ChannelDepositTx), do: {:ok, 51}
+  def type_to_tag(Aecore.Channel.Tx.ChannelWithdrawTx), do: {:ok, 52}
   # Channel force progress transaction - 521
-  def type_to_tag(Aecore.Channel.Tx.ChannelCloseMutalTx), do: {:ok, 53}
+  def type_to_tag(Aecore.Channel.Tx.ChannelCloseMutualTx), do: {:ok, 53}
   def type_to_tag(Aecore.Channel.Tx.ChannelCloseSoloTx), do: {:ok, 54}
   def type_to_tag(Aecore.Channel.Tx.ChannelSlashTx), do: {:ok, 55}
   def type_to_tag(Aecore.Channel.Tx.ChannelSettleTx), do: {:ok, 56}

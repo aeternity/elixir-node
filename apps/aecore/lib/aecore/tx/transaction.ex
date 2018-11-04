@@ -6,7 +6,8 @@ defmodule Aecore.Tx.Transaction do
 
   defmacro __using__(_) do
     quote location: :keep do
-      @behaviour Aecore.Tx.Transaction
+      alias Aecore.Tx.Transaction
+      @behaviour Transaction
 
       @spec chainstate_senders?() :: boolean()
       def chainstate_senders?() do
@@ -40,10 +41,12 @@ defmodule Aecore.Tx.Transaction do
           | Aecore.Contract.Tx.ContractCreateTx.t()
           | Aecore.Contract.Tx.ContractCallTx.t()
           | Aecore.Channel.Tx.ChannelCreateTx.t()
-          | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
+          | Aecore.Channel.Tx.ChannelCloseMutualTx.t()
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
           | Aecore.Channel.Tx.ChannelSlashTx.t()
           | Aecore.Channel.Tx.ChannelSettleTx.t()
+          | Aecore.Channel.Tx.ChannelWithdrawTx.t()
+          | Aecore.Channel.Tx.ChannelDepositTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -69,7 +72,7 @@ defmodule Aecore.Tx.Transaction do
   """
   @callback process_chainstate(
               Chainstate.accounts(),
-              tx_type_state(),
+              tx_type_state() | Chainstate.t(),
               block_height :: non_neg_integer(),
               tx_types(),
               DataTx.t(),
@@ -113,7 +116,7 @@ defmodule Aecore.Tx.Transaction do
   """
   @callback preprocess_check(
               Chainstate.accounts(),
-              tx_type_state(),
+              tx_type_state() | Chainstate.t(),
               block_height :: non_neg_integer(),
               tx_types(),
               DataTx.t(),

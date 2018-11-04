@@ -85,7 +85,7 @@ defmodule AecoreTxTest do
     assert Account.balance(Chain.chain_state().accounts, sender) == amount
 
     :ok = Miner.mine_sync_block_to_chain()
-    # At this poing the sender should have (reward * 3) tokens,
+    # At this point the sender should have (reward * 3) tokens,
     # enough to mine the transaction in the pool
 
     assert Account.balance(Chain.chain_state().accounts, sender) == reward * 3
@@ -109,6 +109,23 @@ defmodule AecoreTxTest do
     :ok = Pool.add_transaction(signed_tx)
     :ok = Miner.mine_sync_block_to_chain()
     # the nonce is small or equal to account nonce, so the transaction is invalid
+    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) ==
+             10_000_000_000_000_000_000
+  end
+
+  test "nonce is too big", tx do
+    {sender, priv_key} = Keys.keypair(:sign)
+    amount = 200
+    fee = 50
+
+    payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
+    invalid_nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 2
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, invalid_nonce)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+
+    :ok = Pool.add_transaction(signed_tx)
+    :ok = Miner.mine_sync_block_to_chain()
+    # the nonce is bigger to account nonce, so the transaction is invalid
     assert Account.balance(TestUtils.get_accounts_chainstate(), sender) ==
              10_000_000_000_000_000_000
   end

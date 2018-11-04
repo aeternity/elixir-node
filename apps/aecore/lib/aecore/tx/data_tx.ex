@@ -6,6 +6,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Keys
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.Transaction
   alias Aeutil.{Bits, Serialization, TypeToTag}
 
   require Logger
@@ -25,10 +26,12 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Contract.Tx.ContractCreateTx
           | Aecore.Contract.Tx.ContractCallTx
           | Aecore.Channel.Tx.ChannelCreateTx
-          | Aecore.Channel.Tx.ChannelCloseMutalTx
+          | Aecore.Channel.Tx.ChannelCloseMutualTx
           | Aecore.Channel.Tx.ChannelCloseSoloTx
           | Aecore.Channel.Tx.ChannelSlashTx
           | Aecore.Channel.Tx.ChannelSettleTx
+          | Aecore.Channel.Tx.ChannelWithdrawTx
+          | Aecore.Channel.Tx.ChannelDepositTx
 
   @typedoc "Structure of a transaction that may be added to the blockchain"
   @type payload ::
@@ -45,10 +48,12 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Contract.Tx.ContractCreateTx.t()
           | Aecore.Contract.Tx.ContractCallTx.t()
           | Aecore.Channel.Tx.ChannelCreateTx.t()
-          | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
+          | Aecore.Channel.Tx.ChannelCloseMutualTx.t()
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
           | Aecore.Channel.Tx.ChannelSlashTx.t()
           | Aecore.Channel.Tx.ChannelSettleTx.t()
+          | Aecore.Channel.Tx.ChannelWithdrawTx.t()
+          | Aecore.Channel.Tx.ChannelDepositTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -57,7 +62,7 @@ defmodule Aecore.Tx.DataTx do
   @type t :: %DataTx{
           type: tx_types(),
           payload: payload(),
-          senders: list(binary()),
+          senders: Identifier.t() | list(Identifier.t()),
           fee: non_neg_integer(),
           nonce: non_neg_integer(),
           ttl: non_neg_integer()
@@ -70,7 +75,7 @@ defmodule Aecore.Tx.DataTx do
 
   # Parameters
   - type: The type of transaction that may be added to the blockchain
-  - payload: The strcuture of the specified transaction type
+  - payload: The structure of the specified transaction type
   - senders: The public addresses of the accounts originating the transaction. First element of this list is special - it's the main sender. Nonce is applied to main sender Account.
   - fee: The amount of tokens given to the miner
   - nonce: An integer bigger then current nonce of main sender Account. (see senders)
@@ -94,9 +99,11 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Contract.Tx.ContractCallTx,
       Aecore.Channel.Tx.ChannelCreateTx,
       Aecore.Channel.Tx.ChannelCloseSoloTx,
-      Aecore.Channel.Tx.ChannelCloseMutalTx,
+      Aecore.Channel.Tx.ChannelCloseMutualTx,
       Aecore.Channel.Tx.ChannelSlashTx,
-      Aecore.Channel.Tx.ChannelSettleTx
+      Aecore.Channel.Tx.ChannelSettleTx,
+      Aecore.Channel.Tx.ChannelWithdrawTx,
+      Aecore.Channel.Tx.ChannelDepositTx
     ]
   end
 
@@ -145,8 +152,14 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec init_binary(tx_types(), map(), list(binary()), binary(), binary(), binary()) ::
-          {:ok, DataTx.t()} | {:error, String.t()}
+  @spec init_binary(
+          tx_types(),
+          map(),
+          list(binary()),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, DataTx.t()} | {:error, String.t()}
   def init_binary(type, payload, encoded_senders, fee, nonce, ttl) do
     with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
       {:ok,
@@ -288,10 +301,19 @@ defmodule Aecore.Tx.DataTx do
         context \\ :transaction
       ) do
     accounts_state = chainstate.accounts
-    tx_type_state = Map.get(chainstate, type.get_chain_state_name(), %{})
+    chain_state_name = type.get_chain_state_name()
+
+    tx_type_state =
+      if Enum.member?([:contracts, :calls], chain_state_name) do
+        chainstate
+      else
+        Map.get(chainstate, chain_state_name)
+      end
 
     tx_type_preprocess_check =
       type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx, context)
+
+    current_nonce = Account.nonce(chainstate.accounts, main_sender(tx, chainstate))
 
     cond do
       tx_type_preprocess_check != :ok ->
@@ -303,8 +325,11 @@ defmodule Aecore.Tx.DataTx do
            block_height
          }"}
 
-      Account.nonce(chainstate.accounts, main_sender(tx, chainstate)) >= tx.nonce ->
-        {:error, "#{__MODULE__}: Transaction nonce too small #{tx.nonce}"}
+      current_nonce + 1 != tx.nonce ->
+        {:error,
+         "#{__MODULE__}: Invalid transaction nonce. Received #{tx.nonce}, expected #{
+           current_nonce + 1
+         }"}
 
       !type.is_minimum_fee_met?(tx, tx_type_state, block_height) ->
         {:error,

@@ -6,17 +6,21 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
 
   alias Aecore.Chain.Chainstate
 
-  alias Aecore.Channel.Updates.ChannelTransferUpdate
-  alias Aecore.Channel.Updates.ChannelDepositUpdate
-  alias Aecore.Channel.Updates.ChannelWidthdrawUpdate
+  alias Aecore.Channel.Updates.{
+    ChannelCreateUpdate,
+    ChannelTransferUpdate,
+    ChannelDepositUpdate,
+    ChannelWithdrawUpdate
+  }
 
   @typedoc """
   Possible types of an update
   """
   @type update_types ::
-          ChannelTransferUpdate.t()
+          ChannelCreateUpdate.t()
+          | ChannelTransferUpdate.t()
           | ChannelDepositUpdate.t()
-          | ChannelWidthdrawUpdate.t()
+          | ChannelWithdrawUpdate.t()
 
   @typedoc """
   The type of errors returned by the functions in this module
@@ -61,20 +65,20 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   to a recent version of epoch offchain updates will just need to be added as serializable objects to the serializer
   and this temporary tag will need to be removed.
   """
-  @spec tag_to_module(non_neg_integer()) :: module()
+  @spec tag_to_module(non_neg_integer()) :: {:ok, module()} | error()
   def tag_to_module(0), do: {:ok, ChannelTransferUpdate}
   def tag_to_module(1), do: {:ok, ChannelDepositUpdate}
-  def tag_to_module(2), do: {:ok, ChannelWidthdrawUpdate}
+  def tag_to_module(2), do: {:ok, ChannelWithdrawUpdate}
 
-  def tag_to_module(_), do: {:error, "#{__MODULE__} Error: Invalid update tag"}
+  def tag_to_module(tag), do: {:error, "#{__MODULE__} Error: Invalid update tag: #{inspect(tag)}"}
 
   @doc """
   Converts the specified module to the associated tag.
   """
-  @spec module_to_tag(module()) :: non_neg_integer()
+  @spec module_to_tag(module()) :: {:ok, non_neg_integer()} | error()
   def module_to_tag(ChannelTransferUpdate), do: {:ok, 0}
   def module_to_tag(ChannelDepositUpdate), do: {:ok, 1}
-  def module_to_tag(ChannelWidthdrawUpdate), do: {:ok, 2}
+  def module_to_tag(ChannelWithdrawUpdate), do: {:ok, 2}
 
   def module_to_tag(module),
     do: {:error, "#{__MODULE__} Error: Unserializable module: #{inspect(module)}"}
@@ -118,7 +122,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
     )
   end
 
-  # Function passed to Enum.reduce. Aplies the given update to the chainstate.
+  # Function passed to Enum.reduce. Applies the given update to the chainstate.
   @spec apply_single_update_to_chainstate(
           update_types(),
           {:ok, Chainstate.t() | nil},
@@ -135,7 +139,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   end
 
   @doc """
-  Updates the offchain chainstate acording to the specified update.
+  Updates the offchain chainstate according to the specified update.
   """
   @spec update_offchain_chainstate(Chainstate.t() | nil, update_types()) ::
           {:ok, Chainstate.t()} | error()

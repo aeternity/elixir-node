@@ -51,7 +51,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   - responder_amount: the amount that the second sender commits
   - locktime: number of blocks for dispute settling
   - state_hash: root hash of the initial offchain chainstate
-  - channel_reserve: minimal ammount of tokens held by the initiator or responder
+  - channel_reserve: minimal amount of tokens held by the initiator or responder
   """
   defstruct [
     :initiator_amount,
@@ -287,7 +287,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
     with {:ok, _} <- Identifier.decode_from_binary_to_value(encoded_initiator, :account),
          {:ok, _} <- Identifier.decode_from_binary_to_value(encoded_responder, :account) do
-      payload = %ChannelCreateTx{
+      payload = %{
         initiator_amount: :binary.decode_unsigned(initiator_amount),
         responder_amount: :binary.decode_unsigned(responder_amount),
         channel_reserve: :binary.decode_unsigned(channel_reserve),

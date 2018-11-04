@@ -7,10 +7,9 @@ defmodule Aecore.Chain.Genesis do
   alias Aecore.Chain.{Block, Chainstate, Header}
   alias Aecore.Governance.GovernanceConstants, as: Governance
   alias Aecore.Governance.GenesisConstants, as: GenesisConstants
+  alias Aeutil.Environment
 
   require Logger
-
-  @dir Application.get_env(:aecore, :account_path)[:path]
 
   @spec hash() :: binary()
   def hash do
@@ -60,7 +59,11 @@ defmodule Aecore.Chain.Genesis do
 
   @spec read_presets() :: {:ok, binary()} | {:error, reason :: atom()}
   def read_presets do
-    preset_accounts_file = Path.join([@dir, "accounts.json"])
+    preset_accounts_file =
+      Path.join([
+        Environment.get_env_or_core_priv_dir("ACCOUNTS_PATH", "genesis"),
+        "accounts.json"
+      ])
 
     case File.read(preset_accounts_file) do
       {:ok, _} = file -> file

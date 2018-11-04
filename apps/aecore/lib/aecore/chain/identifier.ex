@@ -25,7 +25,7 @@ defmodule Aecore.Chain.Identifier do
     %Identifier{type: type, value: value}
   end
 
-  @spec valid?(Identifier.t() | list(Identifier.t()), value()) :: boolean()
+  @spec valid?(Identifier.t() | list(Identifier.t()), type()) :: boolean()
   def valid?(%Identifier{value: value} = id, type) do
     create_identity(value, type) == id
   end

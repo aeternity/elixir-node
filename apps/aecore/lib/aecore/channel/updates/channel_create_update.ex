@@ -1,7 +1,7 @@
 defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   @moduledoc """
-  State channel update which creates the offchain chainstate. This update can not be included in ChannelOffchainTx.
-  The creation of the initial chainstate is implemented as an update in order to increase readibility of the code and facilitate code reuse.
+  State channel update which creates the offchain chainstate. This update can not be included in ChannelOffChainTx.
+  The creation of the initial chainstate is implemented as an update in order to increase readability of the code and facilitate code reuse.
   """
 
   alias Aecore.Channel.Updates.ChannelCreateUpdate

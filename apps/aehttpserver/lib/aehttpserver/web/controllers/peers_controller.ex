@@ -4,9 +4,10 @@ defmodule Aehttpserver.Web.PeersController do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Account.Account
   alias Aecore.Keys
+  alias Aeutil.Environment
 
   def info(conn, _params) do
-    sync_port = Application.get_env(:aecore, :peers)[:sync_port]
+    sync_port = String.to_integer(Environment.get_env_or_default("SYNC_PORT", "3015"))
 
     peer_pubkey =
       :peer

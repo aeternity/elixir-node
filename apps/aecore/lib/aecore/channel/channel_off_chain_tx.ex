@@ -21,9 +21,9 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   """
   @type t :: %ChannelOffChainTx{
           channel_id: binary(),
-          sequence: non_neg_integer(),
+          sequence: non_neg_integer() | nil,
           updates: list(ChannelOffChainUpdate.update_types()),
-          state_hash: binary(),
+          state_hash: binary() | nil,
           signatures: {binary(), binary()}
         }
 
@@ -109,7 +109,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   @doc """
   Signs the offchain transaction with the provided private key.
   """
-  @spec sign(ChannelOffChainTx.t(), Keys.sign_priv_key()) :: ChannelOffChainTx.t()
+  @spec sign(ChannelOffChainTx.t(), Keys.sign_priv_key()) :: {:ok, ChannelOffChainTx.t()}
   def sign(%ChannelOffChainTx{signatures: {<<>>, <<>>}} = offchain_tx, priv_key) do
     signature = signature_for_offchain_tx(offchain_tx, priv_key)
 
@@ -131,7 +131,8 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   """
   @spec initialize_transfer(binary(), Keys.pubkey(), Keys.pubkey(), non_neg_integer()) ::
           ChannelOffChainTx.t()
-  def initialize_transfer(channel_id, from, to, amount) do
+  def initialize_transfer(channel_id, from, to, amount)
+      when is_binary(channel_id) and is_binary(from) and is_binary(to) do
     %ChannelOffChainTx{
       channel_id: channel_id,
       updates: [ChannelTransferUpdate.new(from, to, amount)],
@@ -139,7 +140,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
     }
   end
 
-  @spec offchain_updates(ChannelOffChainTx.t()) :: list(ChannelUpdates.update_types())
+  @spec offchain_updates(ChannelOffChainTx.t()) :: list(ChannelOffChainUpdate.update_types())
   def offchain_updates(%ChannelOffChainTx{updates: updates}) do
     updates
   end
@@ -190,7 +191,8 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   @doc """
   Deserializes the serialized offchain transaction. The resulting transaction does not contain any signatures.
   """
-  @spec decode_from_list(non_neg_integer(), list(binary())) :: ChannelOffChainTx.t() | error()
+  @spec decode_from_list(non_neg_integer(), list(binary())) ::
+          {:ok, ChannelOffChainTx.t()} | error()
   def decode_from_list(@version, [
         encoded_channel_id,
         sequence,
@@ -230,7 +232,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         ExRLP.decode(binary)
       rescue
         e ->
-          {:error, "#{__MODULE__}: rlp_decode: IIllegal serialization: #{Exception.message(e)}"}
+          {:error, "#{__MODULE__}: rlp_decode: Illegal serialization: #{Exception.message(e)}"}
       end
 
     {:ok, signedtx_tag} = TypeToTag.type_to_tag(SignedTx)
@@ -249,10 +251,10 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         end
 
       [^signedtx_tag_bin, ^signedtx_ver_bin | _] ->
-        {:error, "#{__MODULE__}: Invalid signedtx serialization"}
+        {:error, "#{__MODULE__}: Invalid SignedTx serialization"}
 
       [^signedtx_tag_bin | _] ->
-        {:error, "#{__MODULE__}: Unknown signedtx version"}
+        {:error, "#{__MODULE__}: Unknown SignedTx version"}
 
       list when is_list(list) ->
         {:error, "#{__MODULE__}: Invalid tag"}

@@ -8,14 +8,15 @@ defmodule Aecore.Persistence.Worker do
 
   alias Aecore.Chain.{Block, Header, Target}
   alias Aecore.Persistence.Supplier
+  alias Aeutil.Environment
   alias Aeutil.Scientific
   alias Rox.Batch
 
   @typedoc """
   To operate with a patricia merkle tree
-  we do need db reference
+  we need a db reference
 
-  Those names referes to the keys into patricia_families
+  Those names refer to the keys in the patricia_families
   map in our state
   """
 
@@ -417,7 +418,7 @@ defmodule Aecore.Persistence.Worker do
     {:reply, handler, state}
   end
 
-  defp persistence_path, do: Application.get_env(:aecore, :persistence)[:path]
+  def persistence_path, do: Environment.get_env_or_core_priv_dir("PERSISTENCE_PATH", "rox_db")
 
   defp build_state(
          db_refs,

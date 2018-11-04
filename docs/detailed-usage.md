@@ -60,13 +60,78 @@ For normal channel operation following procedure should be followed:
 5. Responder calls `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, half_signed_open_tx, priv_key)`
 6. Responder sends back `fully_signed_open_tx` to Initiator
 7. Both parties await the transaction to be mined. Status of channel will get changed to `:open`
-8. Both parties can create transactions as follows:
+8. Now the channel is opened and the parties can update the channel state. Currently you can perform one of these available operations:
 
-    a. First party calls `{:ok, half_signed_state} = Channel.transfer(channel_id, amount, priv_key)`
-    b. First party sendd `half_signed_state` to second party.
-    c. Second party calls `{:ok, signed_state} = Channel.recv_state(half_signed_state, priv_key)`
-    c. Second party sends back `signed_state`
-    d. First party calls `{:ok, nil} = Channel.recv_state(signed_state, priv_key)`
+    ##### Transfer:
+
+    a. First party calls `{:ok, half_signed_offchain_tx} = Channel.transfer(channel_id, amount, priv_key)`
+    
+    b. First party should be now in the `:awaiting_full_tx` state
+    
+    c. First party sends `half_signed_offchain_tx` to second party.
+    
+    d. Second party calls `{:ok, fully_signed_offchain_tx} = Channel.receive_half_signed_tx(half_signed_offchain_tx, priv_key)`
+    
+    e. Second party should be now in the `:open` state
+    
+    f. Second party sends back `fully_signed_offchain_tx`
+    
+    g. First party calls `:ok = Channel.receive_fully_signed_tx(fully_signed_offchain_tx)`
+    
+    h. First party should be now in the `:open` state
+    
+    ##### Withdraw:
+    
+    a. First party calls `{:ok, half_signed_withdraw_tx} = Channel.withdraw(channel_id, amount, fee, nonce, priv_key)`
+    
+    b. First party should be now in the `:awaiting_full_tx` state
+    
+    c. First party sends `half_signed_withdraw_tx` to second party.
+    
+    d. Second party calls `{:ok, fully_signed_withdraw_tx} = Channel.receive_half_signed_tx(half_signed_withdraw_tx, priv_key)`
+    
+    e. Second party should be now in the `:awaiting_tx_confirmed` state
+    
+    f. `fully_signed_withdraw_tx` should be in the transaction pool.
+    
+    g. Second party sends back `fully_signed_withdraw_tx`
+    
+    h. First party calls `:ok = Channel.receive_fully_signed_tx(fully_signed_withdraw_tx)`
+    
+    i. First party should be now in the `:awaiting_tx_confirmed` state
+    
+    j. Both parties now await for the transaction to get enough confirmations
+    
+    k. When enough confirmations were made both parties call `:ok = Channel.receive_confirmed_tx(fully_signed_withdraw_tx)`
+    
+    l. Both parties should be in the `:open` state
+    
+    ##### Deposit:
+    
+    a. First party calls `{:ok, half_signed_deposit_tx} = Channel.deposit(channel_id, amount, fee, nonce, priv_key)`
+    
+    b. First party should be now in the `:awaiting_full_tx` state
+    
+    c. First party sends `half_signed_deposit_tx` to second party.
+    
+    d. Second party calls `{:ok, fully_signed_deposit_tx} = Channel.receive_half_signed_tx(half_signed_deposit_tx, priv_key)`
+    
+    e. Second party should be now in the `:awaiting_tx_confirmed` state
+    
+    f. `fully_signed_deposit_tx` should be in the transaction pool.
+    
+    g. Second party sends back `fully_signed_deposit_tx`
+    
+    h. First party calls `:ok = Channel.receive_fully_signed_tx(fully_signed_deposit_tx)`
+    
+    i. First party should be now in the `:awaiting_tx_confirmed` state
+    
+    j. Both parties now await for the transaction to get enough confirmations
+    
+    k. When enough confirmations were made both parties call `:ok = Channel.receive_confirmed_tx(fully_signed_deposit_tx)`
+    
+    l. Both parties should be in the `:open` state
+
 9. When parties negotiate that they want to close the channel any party (we will call it first party) calls `{:ok, half_signed_close_tx} = Channel.close(channel_id, {initiator_fee, responder_fee}, nonce, priv_key)`
 10. First party sends `half_signed_close_tx` to second party
 11. Second party calls `{:ok, fully_signed_close_tx} = Channel.recv_close_tx(channel_id, half_signed_close_tx, {initiator_fee, responder_fee}, priv_key)`

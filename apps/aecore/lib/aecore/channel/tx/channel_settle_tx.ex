@@ -51,7 +51,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   @spec sender_type() :: Identifier.type()
   def sender_type, do: :account
 
-  @spec init(payload()) :: ChannelCreateTx.t()
+  @spec init(payload()) :: ChannelSettleTx.t()
   def init(
         %{
           channel_id: channel_id,
@@ -215,7 +215,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
       ]) do
     case Identifier.decode_from_binary_to_value(encoded_channel_id, :channel) do
       {:ok, channel_id} ->
-        payload = %ChannelSettleTx{
+        payload = %{
           channel_id: channel_id,
           initiator_amount: :binary.decode_unsigned(initiator_amount),
           responder_amount: :binary.decode_unsigned(responder_amount)

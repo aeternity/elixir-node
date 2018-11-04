@@ -62,7 +62,7 @@ defmodule Aeutil.Scientific do
 
   # The Difficulty is calculated from the Target and is used in Sync.
   # Difficulty is used to select the winning fork of new blocks:
-  # the difficulty of chain of blocks is the sum of the diffculty of each block.
+  # the difficulty of chain of blocks is the sum of the difficulty of each block.
 
   @spec target_to_difficulty(non_neg_integer()) :: float()
   def target_to_difficulty(target) do
