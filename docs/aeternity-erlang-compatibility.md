@@ -285,7 +285,7 @@ iex> {_, priv_key} = Keys.keypair(:sign)
 
 #### Contract Transactions
 
-##### Scenario with the following Solidity smart contract, containing getter and setter methods, (used calldata parameters are only applicable to this smart contract):
+**Scenario using the following Solidity smart contract, containing getter and setter methods, (used calldata parameters are only applicable to this smart contract):**
 
 ```
 pragma solidity ^0.4.0;
@@ -302,12 +302,11 @@ contract SimpleStorage {
     }
 }
 ```
+**Note:**
+- Sophia ABI and primitive operations are yet to be added
+- Solidity events, logging and account creating, are not yet supported
 
-##### Note:
-###### Sophia ABI and primitive operations are yet to be added
-###### Solidity events, logging and account creating, are not yet supported
-
-##### In order to easily compile Solidity contracts, see their functions' signature hashes, etc., without any setup, you can use the [Remix IDE](https://remix.ethereum.org/)
+In order to easily compile Solidity contracts, see their functions' signature hashes, etc., without any setup, [Remix IDE](https://remix.ethereum.org/) can be used.
 
 - Create and mine a `ConcractCreateTx`:
 ```elixir
