@@ -63,14 +63,6 @@ defmodule Aeutil.Serialization do
 
   def remove_struct(term), do: term
 
-  def cache_key_encode(key, expires) do
-    :erlang.term_to_binary({expires, key})
-  end
-
-  def cache_key_decode(key) do
-    :erlang.binary_to_term(key)
-  end
-
   @doc """
   Initializing function to the recursive functionality of serializing a structure
   """
