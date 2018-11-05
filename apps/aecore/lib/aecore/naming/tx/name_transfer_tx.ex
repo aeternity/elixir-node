@@ -40,7 +40,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @doc """
   Definition of the NameTransferTx structure
   # Parameters
-  - hash: hash of name to be transfered
+  - hash: hash of name to be transferred
   - target: target public key to transfer to
   """
   defstruct [:hash, :target]

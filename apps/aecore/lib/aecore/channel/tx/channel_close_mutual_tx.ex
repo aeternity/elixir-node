@@ -1,4 +1,4 @@
-defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
+defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
   @moduledoc """
   Module defining the ChannelCloseMutual transaction
   """
@@ -9,7 +9,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Channel.{ChannelStateTree, ChannelStateOnChain}
   alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Channel.Tx.{ChannelCloseMutalTx, ChannelCreateTx}
+  alias Aecore.Channel.Tx.{ChannelCloseMutualTx, ChannelCreateTx}
   alias Aecore.Tx.DataTx
 
   require Logger
@@ -30,14 +30,14 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @type tx_type_state() :: ChannelStateTree.t()
 
   @typedoc "Structure of the ChannelMutalClose Transaction type"
-  @type t :: %ChannelCloseMutalTx{
+  @type t :: %ChannelCloseMutualTx{
           channel_id: binary(),
           initiator_amount: non_neg_integer(),
           responder_amount: non_neg_integer()
         }
 
   @doc """
-  Definition of the ChannelCloseMutalTx structure
+  Definition of the ChannelCloseMutualTx structure
 
   # Parameters
   - channel_id: channel id
@@ -55,10 +55,10 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   def chainstate_senders?(), do: true
 
   @doc """
-  ChannelCloseMutalTx senders are not passed with tx, but are supposed to be retrived from Chainstate. The senders have to be channel initiator and responder.
+  ChannelCloseMutualTx senders are not passed with tx, but are supposed to be retrieved from Chainstate. The senders have to be channel initiator and responder.
   """
-  @spec senders_from_chainstate(ChannelCloseMutalTx.t(), Chainstate.t()) :: list(binary())
-  def senders_from_chainstate(%ChannelCloseMutalTx{channel_id: channel_id}, chainstate) do
+  @spec senders_from_chainstate(ChannelCloseMutualTx.t(), Chainstate.t()) :: list(binary())
+  def senders_from_chainstate(%ChannelCloseMutualTx{channel_id: channel_id}, chainstate) do
     case ChannelStateTree.get(chainstate.channels, channel_id) do
       %ChannelStateOnChain{} = channel ->
         [channel.initiator_pubkey, channel.responder_pubkey]
@@ -68,13 +68,13 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     end
   end
 
-  @spec init(payload()) :: ChannelCloseMutalTx.t()
+  @spec init(payload()) :: ChannelCloseMutualTx.t()
   def init(%{
         channel_id: channel_id,
         initiator_amount: initiator_amount,
         responder_amount: responder_amount
       }) do
-    %ChannelCloseMutalTx{
+    %ChannelCloseMutualTx{
       channel_id: channel_id,
       initiator_amount: initiator_amount,
       responder_amount: responder_amount
@@ -84,9 +84,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, reason()}
+  @spec validate(ChannelCloseMutualTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
-        %ChannelCloseMutalTx{
+        %ChannelCloseMutualTx{
           initiator_amount: initiator_amount,
           responder_amount: responder_amount
         },
@@ -114,7 +114,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
           Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
-          ChannelCloseMutalTx.t(),
+          ChannelCloseMutualTx.t(),
           DataTx.t(),
           Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}}
@@ -122,7 +122,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         accounts,
         channels,
         block_height,
-        %ChannelCloseMutalTx{
+        %ChannelCloseMutualTx{
           channel_id: channel_id,
           initiator_amount: initiator_amount,
           responder_amount: responder_amount
@@ -153,7 +153,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
           Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
-          ChannelCloseMutalTx.t(),
+          ChannelCloseMutualTx.t(),
           DataTx.t(),
           Transaction.context()
         ) :: :ok | {:error, reason()}
@@ -161,7 +161,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         _accounts,
         channels,
         _block_height,
-        %ChannelCloseMutalTx{
+        %ChannelCloseMutualTx{
           channel_id: channel_id,
           initiator_amount: initiator_amount,
           responder_amount: responder_amount
@@ -210,8 +210,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     fee >= GovernanceConstants.minimum_fee()
   end
 
-  @spec encode_to_list(ChannelCloseMutalTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%ChannelCloseMutalTx{} = tx, %DataTx{} = datatx) do
+  @spec encode_to_list(ChannelCloseMutualTx.t(), DataTx.t()) :: list()
+  def encode_to_list(%ChannelCloseMutualTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(tx.channel_id, :channel),
@@ -241,7 +241,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         }
 
         DataTx.init_binary(
-          ChannelCloseMutalTx,
+          ChannelCloseMutualTx,
           payload,
           [],
           :binary.decode_unsigned(fee),

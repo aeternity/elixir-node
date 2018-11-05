@@ -10,6 +10,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Chain.{Block, Header, Genesis}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Governance.GovernanceConstants
@@ -18,7 +19,7 @@ defmodule AecoreValidationTest do
     Code.require_file("test_utils.ex", "./test")
     TestUtils.clean_blockchain()
 
-    path = Application.get_env(:aecore, :persistence)[:path]
+    path = Persistence.persistence_path()
 
     if File.exists?(path) do
       File.rm_rf(path)
@@ -66,7 +67,7 @@ defmodule AecoreValidationTest do
 
     incorrect_pow_block = %Block{new_block | header: %Header{new_block.header | height: 10}}
 
-    assert {:error, "#{BlockValidation}: Header hash doesnt meet the target"} ==
+    assert {:error, "#{BlockValidation}: Header hash doesn't meet the target"} ==
              BlockValidation.calculate_and_validate_block(
                incorrect_pow_block,
                prev_block,

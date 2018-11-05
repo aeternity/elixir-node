@@ -1,7 +1,7 @@
 defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
   @moduledoc """
-  State channel update implementing transfers in the state channel. This update can be included in ChannelOffchainTx.
-  This update allows for transfering tokens between peers in the state channel(later for transfers to offchain contract accounts)..
+  State channel update implementing transfers in the state channel. This update can be included in ChannelOffChainTx.
+  This update allows for transferring tokens between peers in the state channel(later for transfers to offchain contract accounts).
   """
 
   alias Aecore.Account.{Account, AccountStateTree}
@@ -31,7 +31,7 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
   ## Parameters
   - from: the offchain account where the transfer originates
   - to: the offchain account which is the destination of the transfer
-  - amount: number of the tokens transfered between the peers
+  - amount: number of the tokens transferred between the peers
   """
   defstruct [:from, :to, :amount]
 

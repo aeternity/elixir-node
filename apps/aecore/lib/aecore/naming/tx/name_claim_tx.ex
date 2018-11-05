@@ -151,7 +151,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
          }"}
 
       claim != :none ->
-        {:error, "#{__MODULE__}: Name has aleady been claimed: #{inspect(claim)}"}
+        {:error, "#{__MODULE__}: Name has already been claimed: #{inspect(claim)}"}
 
       true ->
         :ok

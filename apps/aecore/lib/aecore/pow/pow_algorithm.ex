@@ -13,7 +13,7 @@ defmodule Aecore.Pow.PowAlgorithm do
   @callback verify(Header.t()) :: boolean()
 
   @doc """
-  Creates a pow_evidence. Returns a Header with pow_evidence field filld or error.
+  Creates a pow_evidence. Returns a Header with pow_evidence field filled or error.
   pow_evidence has to be a list of 42 integers.
   """
   @callback generate(Header.t()) :: {:ok, Header.t()} | error()

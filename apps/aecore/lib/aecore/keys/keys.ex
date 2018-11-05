@@ -4,8 +4,9 @@ defmodule Aecore.Keys do
   Keys are created on the first run of the project and saved in their respective directories.
   """
 
-  alias Aeutil.Bits
   alias Aecore.Chain.Identifier
+  alias Aeutil.Environment
+  alias Aeutil.Bits
 
   @typedoc "Defines what type of keypair we could have"
   @type keypair_type :: :sign | :peer
@@ -88,7 +89,7 @@ defmodule Aecore.Keys do
   the function will return the miners :sign and :peer keypair. If a suffix is added,
   additional keypairs are going to be returned.
 
-  The accepter keypair types are:
+  The accepted keypair types are:
     * `:sign` - returns a tuple with signing keys {pub, priv}
     * `:peer` - returns a tuple with peers keys {pub, priv}
 
@@ -153,7 +154,7 @@ defmodule Aecore.Keys do
   defp gen_dir(false, keys_dir), do: File.mkdir!(keys_dir)
   defp gen_dir(true, _), do: :ok
 
-  # Reads the keys from their respectve directory and returns
+  # Reads the keys from their respective directory and returns
   # their decrypted result. If either of the files is not readable - return an error
   defp read_keypair(pwd, pub_file, priv_file) do
     case {File.read(pub_file), File.read(priv_file)} do
@@ -205,26 +206,11 @@ defmodule Aecore.Keys do
     Bits.decode58(payload)
   end
 
-  defp pwd(:sign) do
-    {:ok, opts} = sign_keys_opts()
-    opts[:pass]
-  end
+  defp pwd(:sign), do: Environment.get_env_or_default("SIGN_KEYS_PASS", <<"secret">>)
 
-  defp pwd(:peer) do
-    {:ok, opts} = peer_keys_opts()
-    opts[:pass]
-  end
+  defp pwd(:peer), do: Environment.get_env_or_default("PEER_KEYS_PASS", <<"secret">>)
 
-  defp dir(:sign) do
-    {:ok, opts} = sign_keys_opts()
-    Application.app_dir(:aecore, "priv") <> opts[:path]
-  end
+  defp dir(:sign), do: Environment.get_env_or_core_priv_dir("PEER_KEYS_PATH", "signkeys")
 
-  defp dir(:peer) do
-    {:ok, opts} = peer_keys_opts()
-    Application.app_dir(:aecore, "priv") <> opts[:path]
-  end
-
-  defp sign_keys_opts, do: Application.fetch_env(:aecore, :sign_keys)
-  defp peer_keys_opts, do: Application.fetch_env(:aecore, :peer_keys)
+  defp dir(:peer), do: Environment.get_env_or_core_priv_dir("SIGN_KEYS_PATH", "peerkeys")
 end

@@ -5,19 +5,19 @@
 elixir-node must be run in production mode to use the`mean28s-generic` miner, by using `MIX_ENV=prod`.  
 
 **To connect to a Epoch node:**
-- Get the peer pubkey of the epoch node: 
+- Get the peer pubkey of the epoch node:
 ```erlang
 (epoch)> {ok, PeerPubKey} = aec_keys:peer_pubkey().
 (epoch)> erlang:display(PeerPubKey).
 ```
-- Try to connect from the elixir node: 
+- Try to connect from the elixir node:
 ```elixir
 iex> Peers.try_connect(%{host: 'localhost', port: 3015, pubkey: epoch_peer_key})
 ```
 
 **To check that both nodes are connected, check if the top block is equal:**
 - Get top block from epoch `aec_chain:top_block().`
-- Get top block from elixir `Chain.top_block()` 
+- Get top block from elixir `Chain.top_block()`
 
 **Check that we can gossip transactions between the implementations:**
 - Create a `SpendTx`:
@@ -67,7 +67,7 @@ If everything is correct in both nodes you have to have the same block for all f
 
 #### Spend Transaction
 - Create and mine a `SpendTx`:
-```elixir 
+```elixir
 iex> amount = 100
 iex> fee = 10
 iex> pubkey = <<0::256>>
@@ -86,7 +86,7 @@ iex> ttl = 1000
 iex> Account.pre_claim(name, name_salt, fee, ttl)
 iex> Miner.mine_sync_block_to_chain()
 ```
- 
+
 - Create and mine a `NameClaimTx`:
 ```elixir
 iex> name = "foobar.aet"
@@ -251,8 +251,8 @@ These operations can be initiated by any party. Through the scope of this sectio
     
 ##### Communication lost / party misbehaving scenario
 
-0. Start 2 Elixir nodes. Both syncing with each other and epoch. 
-1. (both) Set basic parameters: 
+0. Start 2 Elixir nodes. Both syncing with each other and epoch.
+1. (both) Set basic parameters:
 ```elixir
 iex> temporary_id = <<4,5,6>>
 iex> initiator_pubkey = #Get from Keys.keypair(:sign) of corresponding node
@@ -275,25 +275,25 @@ iex> {_, priv_key} = Keys.keypair(:sign)
 9. Make a transfer as follows:
 
     a. (initiator) `{:ok, half_signed_state} = Channel.transfer(channel_id, 50, priv_key)`
-    
+
     b. Copy `half_signed_state` to responder.
-    
+
     c. (responder) `{:ok, signed_state} = Channel.receive_half_signed_tx(half_signed_state, priv_key)`
-    
+
     d. Copy `signed_state` to initiator.
-    
+
     e. (initiator) `:ok = Channel.receive_fully_signed_tx(signed_state)`
-    
+
 10. Make another partial transfer:
 
     a. (responder) `{:ok, half_signed_state2} = Channel.transfer(channel_id, 25, priv_key)`
-    
+
     b. Copy `half_signed_state2` to initiator.
-    
+
     c. (initiator) `{:ok, signed_state2} = Channel.receive_half_signed_tx(half_signed_state2, priv_key)`
-    
+
     c. Do NOT copy `signed_state` to responder.
-    
+
 11. (responder) `Channel.solo_close(channel_id, 5, nonce, priv_key)` with appropriate nonce
 12. (responder) `Miner.mine_sync_block_to_chain()` and check all nodes recognize ChannelSoloCloseTx.
 13. (initiator) `Channel.slash(channel_id, 5, nonce, initiator_pubkey, priv_key)` with appropriate nonce
@@ -303,4 +303,90 @@ iex> {_, priv_key} = Keys.keypair(:sign)
 17. (initiator) `Miner.mine_sync_block_to_chain()` and check all nodes recognize ChannelSettleTx.
 
 #### Contract Transactions
-TBA..
+
+**Scenario using the following Solidity smart contract, containing getter and setter methods, (used calldata parameters are only applicable to this smart contract):**
+
+```
+pragma solidity ^0.4.0;
+
+contract SimpleStorage {
+    uint storedData;
+
+    function set(uint x) public {
+        storedData = x;
+    }
+
+    function get() public view returns (uint) {
+        return storedData;
+    }
+}
+```
+**Note:**
+- Sophia ABI and primitive operations are yet to be added
+- Solidity events, logging and account creating, are not yet supported
+
+In order to easily compile Solidity contracts, see their functions' signature hashes, etc., without any setup, [Remix IDE](https://remix.ethereum.org/) can be used.
+
+- Create and mine a `ConcractCreateTx`:
+```elixir
+iex> code = State.bytecode_to_bin(
+  "608060405234801561001057600080fd5b5060df8061001f6000396000f3006080604052600436106049576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806360fe47b114604e5780636d4ce63c146078575b600080fd5b348015605957600080fd5b5060766004803603810190808035906020019092919050505060a0565b005b348015608357600080fd5b50608a60aa565b6040518082815260200191505060405180910390f35b8060008190555050565b600080549050905600a165627a7a723058200d4dc371ec3b51661664cbded4b6722edf12a97461796fe3ca14264502f265420029"
+)
+iex> vm_version = Constants.aevm_solidity_01()
+iex> deposit = 100
+iex> amount = 50
+iex> gas = 100_000
+iex> gas_price = 1
+iex> call_data = <<>>
+iex> fee = 10
+iex> Contract.create(code, vm_version, deposit, amount, gas, gas_price, call_data, fee)
+iex> Miner.mine_sync_block_to_chain()
+```
+- `code` is the byte code that the contract is compiled to
+
+- `call_data` is the parameter that tells the VM which function to interpret, along with what parameter values to be passed
+
+- depending on the `vm_version`, we can have a value, passed to a init function (Sophia), or be empty, like in this case (Solidity)
+
+- Create and mine a `ContractCallTx` (set):
+```elixir
+iex> {pub_key, _} = Keys.keypair(:sign)
+iex> prev_nonce = Chain.lowest_valid_nonce() - 1
+iex> contract_id = Contract.create_contract_id(pub_key, prev_nonce)
+iex> vm_version = Constants.aevm_solidity_01()
+iex> amount = 50
+iex> gas = 100_000
+iex> gas_price = 1
+iex> call_data = <<96, 254, 71, 177>> <> <<33::256>>
+iex> call_stack = []
+iex> fee = 10
+iex> Call.call_contract(contract_id, vm_version, amount, gas, gas_price, call_data, call_stack, fee)
+iex> Miner.mine_sync_block_to_chain()
+```
+- `call_stack` is used internally and should always be empty when executing from top level (populated automatically when there are nested calls)
+
+- the first four bytes of `call_data` are the first four bytes of the Keccak-256 hash of the signature of the function (according to Solidity ABI); the next 32 bytes represent the value, which is to be passed to this function (arguments should be encoded, according to Solidity ABI); in this case, `<<96, 254, 71, 177>>` stands for the `set` function, and the next 32 bytes `<<33::256>>` represent the integer value of `33`
+
+- Create and mine a `ContractCallTx` (get):
+```elixir
+iex> {pub_key, _} = Keys.keypair(:sign)
+iex> prev_nonce = Chain.lowest_valid_nonce() - 2
+iex> contract_id = Contract.create_contract_id(pub_key, prev_nonce)
+iex> vm_version = Constants.aevm_solidity_01()
+iex> amount = 50
+iex> gas = 100_000
+iex> gas_price = 1
+iex> call_data = <<109, 76, 230, 60>>
+iex> call_stack = []
+iex> fee = 10
+iex> Call.call_contract(contract_id, vm_version, amount, gas, gas_price, call_data, call_stack, fee)
+iex> Miner.mine_sync_block_to_chain()
+iex> prev_nonce = Chain.lowest_valid_nonce() - 1
+iex> call_id = Call.id(pub_key, prev_nonce, contract_id)
+iex> call_tree_id = CallStateTree.construct_call_tree_id(contract_id, call_id)
+iex> CallStateTree.get_call(Chain.chain_state.calls, call_tree_id)
+```
+
+- `call_data` has a value of `<<109, 76, 230, 60>>`, which stands for the `get` function
+
+- `call_stack` is again empty, as this is the top level call

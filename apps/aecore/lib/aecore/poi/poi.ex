@@ -1,7 +1,7 @@
 defmodule Aecore.Poi.Poi do
   @moduledoc """
   Module implementing a Proof of Inclusion(POI) on state trees for the entire chainstate.
-  The POI is an abstraction for sharing and accesing a subset of an existing chainstate to any intrested party.
+  The POI is an abstraction for sharing and accessing a subset of an existing chainstate to any interested party.
   The POI is cryptographically tied to the chainstate from which the POI was generated (we can proof that the POI is a subset of a chainstate with a given state hash).
   """
 

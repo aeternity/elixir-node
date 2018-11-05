@@ -1,8 +1,8 @@
 defmodule Aecore.Poi.PoiProof do
   @moduledoc """
-  Implements a Proof Of Inclusion(POI) for a single Merkle Patricia Trie. This module is type agnostic, any keys or values passed to this module must be serialized beforehand. This is an abstraction layer for providing a view into a subset of a given merkle patricia trie. The POI is cryptographicaly tied to the original merkle patricia tree - we can cryptographicly proof that the POI was generated from a merkle patricia trie with a given root hash.
+  Implements a Proof Of Inclusion(POI) for a single Merkle Patricia Trie. This module is type agnostic, any keys or values passed to this module must be serialized beforehand. This is an abstraction layer for providing a view into a subset of a given merkle patricia trie. The POI is cryptographically tied to the original merkle patricia tree - we can cryptographically proof that the POI was generated from a merkle patricia trie with a given root hash.
 
-  Standard merkle patricia tries rely on a persistent key value store which is accesed by callbacks. This module uses a in memory map as the key value store and uses the PoiPersistence wrapper in order to encapsulate the side effects of the PatriciaMerkleTree module.
+  Standard merkle patricia tries rely on a persistent key value store which is accessed by callbacks. This module uses a in memory map as the key value store and uses the PoiPersistence wrapper in order to encapsulate the side effects of the PatriciaMerkleTree module.
   """
 
   alias Aecore.Poi.PoiPersistence
@@ -160,7 +160,7 @@ defmodule Aecore.Poi.PoiProof do
     )
   end
 
-  # Wrapper for proof construction on merkle patricia trees. Uses the PoiPersistence wrapper for obtaining functional behaviour although the underlaying library relies on side effects in order to achieve persistence.
+  # Wrapper for proof construction on merkle patricia trees. Uses the PoiPersistence wrapper for obtaining functional behaviour although the underlying library relies on side effects in order to achieve persistence.
   @spec side_efects_encapsulating_proof_construction(PoiProof.t(), Trie.t(), Trie.key()) ::
           {:ok, trie_value(), map()} | {:error, :key_not_found}
   defp side_efects_encapsulating_proof_construction(%PoiProof{} = poi_proof, %Trie{} = trie, key) do
@@ -207,7 +207,7 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   @doc """
-  Lookups the entry assiociated with the given key in the Poi proof
+  Lookups the entry associated with the given key in the Poi proof
   """
   @spec lookup_in_poi(PoiProof.t(), Trie.key()) :: {:ok, trie_value()} | :error
   def lookup_in_poi(%PoiProof{} = poi_proof, key) do
@@ -235,7 +235,7 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   @doc """
-  Deserialized the poi proof from a list
+  Deserializes the poi proof from a list
   """
   @spec decode_from_list(list(list(binary()))) :: {:ok, PoiProof.t()} | {:error, String.t()}
   def decode_from_list([]) do

@@ -39,7 +39,7 @@ defmodule Aeutil.Serialization do
   def base64_binary(_, _), do: nil
 
   @doc """
-  Loops through a structure are simplifies it. Removes all the strucutured maps
+  Loops through a structure and simplifies it. Removes all the structured maps
   """
   @spec remove_struct(list(map())) :: list()
   def remove_struct(term) when is_list(term) do
@@ -70,7 +70,7 @@ defmodule Aeutil.Serialization do
   end
 
   @doc """
-  Initializing function to the recursive functionality of serializing a strucure
+  Initializing function to the recursive functionality of serializing a structure
   """
   @spec serialize_value(value()) :: value()
   def serialize_value(value), do: serialize_value(value, "")
@@ -169,7 +169,7 @@ defmodule Aeutil.Serialization do
   def serialize_value(value, _), do: value
 
   @doc """
-  Initializing function to the recursive functionality of deserializing a strucure
+  Initializing function to the recursive functionality of deserializing a structure
   """
   @spec deserialize_value(value()) :: value()
   def deserialize_value(value), do: deserialize_value(value, :other)
@@ -348,7 +348,7 @@ defmodule Aeutil.Serialization do
         ExRLP.decode(binary)
       rescue
         e ->
-          {:error, "#{__MODULE__}: rlp_decode: IIllegal serialization: #{Exception.message(e)}"}
+          {:error, "#{__MODULE__}: rlp_decode: Illegal serialization: #{Exception.message(e)}"}
       end
 
     case result do

@@ -7,7 +7,7 @@ defmodule Aecore.Channel.Worker do
   alias Aecore.Channel.{ChannelStatePeer, ChannelTransaction, ChannelOffChainTx}
 
   alias Aecore.Channel.Tx.{
-    ChannelCloseMutalTx,
+    ChannelCloseMutualTx,
     ChannelCloseSoloTx,
     ChannelSlashTx,
     ChannelSettleTx,
@@ -44,13 +44,12 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Notifies the channel manager about a new mined tx
   """
-  # , ChannelWidhdrawTx, ChannelDepositTx]  do
   def new_tx_mined(%SignedTx{data: %DataTx{type: type}} = tx)
       when type in [ChannelCreateTx, ChannelWithdrawTx, ChannelDepositTx] do
     receive_confirmed_tx(tx)
   end
 
-  def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelCloseMutalTx}} = tx) do
+  def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelCloseMutualTx}} = tx) do
     closed(tx)
   end
 
@@ -136,7 +135,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Creates open transaction. Can only be called once per channel by :initiator. Returns pair: generated channelID, half signed SignedTx.
+  Creates open transaction. Can only be called once per channel by :initiator. Returns pair: generated channel_id, half signed SignedTx.
   """
   @spec open(
           binary(),
@@ -234,7 +233,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Handles incoming uncorfirmed fully signed onchain Tx or confirmed fully signed offchain Tx.
+  Handles incoming unconfirmed fully signed onchain Tx or confirmed fully signed offchain Tx.
   """
   @spec receive_fully_signed_tx(ChannelTransaction.channel_tx()) :: :ok | error()
   def receive_fully_signed_tx(fully_signed_tx) do
@@ -562,7 +561,7 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:closed, %SignedTx{data: %DataTx{payload: payload}}}, _from, state) do
     id =
       case payload do
-        %ChannelCloseMutalTx{channel_id: id} ->
+        %ChannelCloseMutualTx{channel_id: id} ->
           id
 
         %ChannelSettleTx{channel_id: id} ->

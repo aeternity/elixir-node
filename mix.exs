@@ -16,10 +16,10 @@ defmodule ElixirNode.Mixfile do
       deps: deps(),
       dialyzer: [
         paths: [
-          "_build/dev/lib/aecore/ebin",
-          "_build/dev/lib/aehttpclient/ebin",
-          "_build/dev/lib/aehttpserver/ebin",
-          "_build/dev/lib/aeutil/ebin"
+          "_build/test/lib/aecore/ebin",
+          "_build/test/lib/aehttpclient/ebin",
+          "_build/test/lib/aehttpserver/ebin",
+          "_build/test/lib/aeutil/ebin"
         ],
         ignore_warnings: "dialyzer.ignore-warnings"
       ],

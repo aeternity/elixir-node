@@ -1,6 +1,6 @@
 defmodule Aecore.Pow.Pow do
   @moduledoc """
-  A meta Proof of work alorithm that invokes proper allgorithm for current environment
+  An abstraction layer for Proof of Work schemes that invokes the chosen algorithm based on the current environment variables
   """
 
   alias Aecore.Chain.Header
@@ -8,7 +8,7 @@ defmodule Aecore.Pow.Pow do
   @behaviour Aecore.Pow.PowAlgorithm
 
   @doc """
-  Calls verify of apropriate module
+  Calls verify of appropriate module
   """
   @spec verify(Header.t()) :: boolean()
   def verify(%Header{} = header) do
@@ -16,7 +16,7 @@ defmodule Aecore.Pow.Pow do
   end
 
   @doc """
-  Calls generate of apropriate module
+  Calls generate of appropriate module
   """
   @spec generate(Header.t()) :: {:ok, Header.t()} | {:error, atom()}
   def generate(%Header{} = header) do

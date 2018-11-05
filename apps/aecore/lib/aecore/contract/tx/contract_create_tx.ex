@@ -51,7 +51,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   - code: the byte code of the contract
   - vm_version: the VM/ABI to use
   - deposit: held by the contract until it is deactivated (an even number, 0 is accepted)
-  - amount: to be added to the miner account
+  - amount: to be added to the contract account
   - gas: gas for the initial call
   - gas_price: gas price for the call
   - call_data: call data for the initial call (usually including a function name and args, interpreted by the contract)

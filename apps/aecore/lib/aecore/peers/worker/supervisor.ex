@@ -10,6 +10,7 @@ defmodule Aecore.Peers.Worker.Supervisor do
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
   alias Aecore.Keys
+  alias Aeutil.Environment
 
   def start_link(_args) do
     Supervisor.start_link(__MODULE__, :ok)
@@ -39,11 +40,7 @@ defmodule Aecore.Peers.Worker.Supervisor do
     Supervisor.init(children, strategy: :one_for_all)
   end
 
-  def sync_port do
-    Application.get_env(:aecore, :peers)[:sync_port]
-  end
+  def sync_port, do: String.to_integer(Environment.get_env_or_default("SYNC_PORT", "3015"))
 
-  def num_of_acceptors do
-    Application.get_env(:aecore, :peers)[:ranch_acceptors]
-  end
+  def num_of_acceptors, do: Application.get_env(:aecore, :peers)[:ranch_acceptors]
 end

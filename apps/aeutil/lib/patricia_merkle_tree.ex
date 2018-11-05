@@ -1,8 +1,8 @@
 defmodule Aeutil.PatriciaMerkleTree do
   @moduledoc """
 
-  This module provides apis for creating, updating, deleting
-  patricia merkle tries, The actual handler is https://github.com/exthereum/merkle_patricia_tree
+  This module provides and API for creating, updating, deleting
+  patricia merkle tries, The actual handler is https://github.com/aeternity/elixir-merkle-patricia-tree
 
   """
 
@@ -21,7 +21,7 @@ defmodule Aeutil.PatriciaMerkleTree do
 
   @typedoc """
   Depending on the name, different data base ref will
-  be used for the trie creaton.
+  be used for the trie creation.
   """
   @type trie_name ::
           :accounts

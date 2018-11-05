@@ -107,7 +107,7 @@ defmodule AecoreChannelTest do
     perform_withdraw(id, 50, 5, 2, &call_s1/1, ctx.pk1, ctx.sk1, &call_s2/1, ctx.pk2, ctx.sk2)
     assert_offchain_state(id, 100, 150, 2)
 
-    perform_withdraw(id, 50, 5, 2, &call_s2/1, ctx.pk2, ctx.sk2, &call_s1/1, ctx.pk1, ctx.sk1)
+    perform_withdraw(id, 50, 5, 1, &call_s2/1, ctx.pk2, ctx.sk2, &call_s1/1, ctx.pk1, ctx.sk1)
     assert_offchain_state(id, 100, 100, 3)
 
     {:ok, close_tx} = call_s1({:close, id, {5, 5}, 3, ctx.sk1})
@@ -137,7 +137,7 @@ defmodule AecoreChannelTest do
     perform_deposit(id, 20, 5, 2, &call_s1/1, ctx.pk1, ctx.sk1, &call_s2/1, ctx.pk2, ctx.sk2)
     assert_offchain_state(id, 170, 150, 2)
 
-    perform_deposit(id, 20, 5, 2, &call_s2/1, ctx.pk2, ctx.sk2, &call_s1/1, ctx.pk1, ctx.sk1)
+    perform_deposit(id, 20, 5, 1, &call_s2/1, ctx.pk2, ctx.sk2, &call_s1/1, ctx.pk1, ctx.sk1)
     assert_offchain_state(id, 170, 170, 3)
 
     {:ok, close_tx} = call_s1({:close, id, {5, 5}, 3, ctx.sk1})
@@ -265,7 +265,7 @@ defmodule AecoreChannelTest do
     # slashing with old state fails
     assert_custom_tx_fails(solo_close_tx2)
 
-    # make some transfers so the solo_close tx will include a OffchainTx
+    # make some transfers so the solo_close tx will include a OffChainTx
     perform_transfer(id, 25, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
     assert_offchain_state(id, 75, 225, 8)
 

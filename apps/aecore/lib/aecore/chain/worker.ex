@@ -352,9 +352,9 @@ defmodule Aecore.Chain.Worker do
     Enum.each(txs, fn tx -> Pool.remove_transaction(tx) end)
     new_block_hash = Header.hash(header)
 
-    # refs_list is generated so it contains n-th prev blocks for n-s beeing a power of two.
+    # refs_list is generated so it contains n-th prev blocks for n-s being a power of two.
     # So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A].
-    # This allows for log n findning of block with a given height.
+    # This allows for log n finding of block with a given height.
 
     new_refs = refs(@max_refs, blocks_data_map, prev_hash)
 
@@ -382,7 +382,7 @@ defmodule Aecore.Chain.Worker do
 
     if top_height < height do
       Persistence.batch_write(%{
-        # Transfrom from chain state
+        # Transform from chain state
         :chain_state => %{
           new_block_hash =>
             transform_chainstate(:from_chainstate, {:ok, Map.from_struct(new_chain_state)})
@@ -578,11 +578,11 @@ defmodule Aecore.Chain.Worker do
   end
 
   # get_nth_prev_hash - traverses block_data_map using the refs.
-  # Becouse refs contain hashes of 1,2,4,8,16,... prev blocks we can do it fast.
+  # Because refs contain hashes of 1,2,4,8,16,... prev blocks we can do it fast.
   # Lets look at the height difference as a binary representation.
   # Eg. Lets say we want to go 10110 blocks back in the tree.
   # Instead of using prev_block 10110 times we can go back by 2 blocks then by 4 and by 16.
-  # We can go back by such numbers of blocks becouse we have the refs.
+  # We can go back by such numbers of blocks because we have the refs.
   # This way we did 3 operations instead of 22. In general we do O(log n) operations
   # to go back by n blocks.
   defp get_nth_prev_hash(n, begin_hash, blocks_data_map) do

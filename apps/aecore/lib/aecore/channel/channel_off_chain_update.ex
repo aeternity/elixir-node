@@ -122,7 +122,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
     )
   end
 
-  # Function passed to Enum.reduce. Aplies the given update to the chainstate.
+  # Function passed to Enum.reduce. Applies the given update to the chainstate.
   @spec apply_single_update_to_chainstate(
           update_types(),
           {:ok, Chainstate.t() | nil},
@@ -139,7 +139,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   end
 
   @doc """
-  Updates the offchain chainstate acording to the specified update.
+  Updates the offchain chainstate according to the specified update.
   """
   @spec update_offchain_chainstate(Chainstate.t() | nil, update_types()) ::
           {:ok, Chainstate.t()} | error()

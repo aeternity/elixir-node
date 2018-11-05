@@ -50,7 +50,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   - responder_amount: the amount that the second sender commits
   - locktime: number of blocks for dispute settling
   - state_hash: root hash of the initial offchain chainstate
-  - channel_reserve: minimal ammount of tokens held by the initiator or responder
+  - channel_reserve: minimal amount of tokens held by the initiator or responder
   """
   defstruct [
     :initiator_amount,

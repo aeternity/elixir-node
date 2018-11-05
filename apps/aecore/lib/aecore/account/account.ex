@@ -42,7 +42,7 @@ defmodule Aecore.Account.Account do
   Definition of the Account structure
 
   # Parameters
-  - balance: the acccount balance
+  - balance: the account balance
   - nonce: an integer which is updated (always increased) whenever an outgoing transaction is made by the account
   - id: the account itself
   """

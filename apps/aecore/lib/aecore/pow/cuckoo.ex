@@ -13,7 +13,7 @@ defmodule Aecore.Pow.Cuckoo do
 
   alias Aecore.Chain.Header
   alias Aecore.Pow.Hashcash
-  alias Aeutil.Hash
+  alias Aeutil.{Environment, Hash}
 
   @behaviour Aecore.Pow.PowAlgorithm
 
@@ -80,8 +80,7 @@ defmodule Aecore.Pow.Cuckoo do
   defp command_options(:generate), do: default_command_options()
 
   defp default_command_options do
-    full_bin_dir =
-      Application.app_dir(:aecore, "priv") <> Application.get_env(:aecore, :pow)[:bin_dir]
+    full_bin_dir = Environment.core_priv_dir("cuckoo/bin")
 
     [
       {:stdout, self()},
@@ -90,7 +89,8 @@ defmodule Aecore.Pow.Cuckoo do
       {:sync, false},
       {:cd, full_bin_dir},
       {:env, [{"SHELL", "/bin/sh"}]},
-      {:monitor, true}
+      {:monitor, true},
+      {:pty, false}
     ]
   end
 

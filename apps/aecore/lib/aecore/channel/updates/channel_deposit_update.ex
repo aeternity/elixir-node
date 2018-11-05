@@ -1,7 +1,7 @@
 defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
   @moduledoc """
   State channel update implementing deposits in the state channel. This update can be included in ChannelOffchainTx.
-  This update is used by ChannelDepositTx for transfering onchain tokens to the state channel.
+  This update is used by ChannelDepositTx for transferring onchain tokens to the state channel.
   """
 
   alias Aecore.Account.{Account, AccountStateTree}

@@ -1,13 +1,6 @@
 use Mix.Config
 
-port =
-  case System.get_env("PORT") do
-    nil -> 4000
-    env -> env
-  end
-
 config :aehttpserver, Aehttpserver.Web.Endpoint,
-  http: [port: port],
   debug_errors: true,
   check_origin: false,
   watchers: []

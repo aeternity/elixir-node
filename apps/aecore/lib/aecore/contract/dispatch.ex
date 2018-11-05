@@ -3,7 +3,7 @@ defmodule Aecore.Contract.Dispatch do
     Module for running contracts on the right VM
   """
 
-  alias Aecore.Contract.{Call, VmChain}
+  alias Aecore.Contract.VmChain
   alias Aecore.Chain.Chainstate
   alias Aevm.State, as: State
   alias Aevm.Aevm, as: Aevm

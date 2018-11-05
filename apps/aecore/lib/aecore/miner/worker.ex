@@ -16,6 +16,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Pow.Pow
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aeutil.Environment
 
   require Logger
 
@@ -79,10 +80,16 @@ defmodule Aecore.Miner.Worker do
   # Mine single block without adding it to the chain - Sync
   @spec mine_sync_block(Block.t()) :: {:ok, Block.t()} | {:error, reason :: atom()}
   def mine_sync_block(%Block{header: %Header{} = header} = cblock) do
-    if GenServer.call(__MODULE__, :get_state) == :idle do
-      mine_sync_block(Pow.generate(header), cblock)
-    else
-      {:error, :miner_is_busy}
+    cond do
+      GenServer.call(__MODULE__, :get_state) != :idle ->
+        {:error, :miner_is_busy}
+
+      (pow = Pow.generate(header)) != {:error, :miner_was_stopped} ->
+        mine_sync_block(pow, cblock)
+
+      true ->
+        # When the miner crashed on the first run we can be sure that this is not a random crash
+        {:error, :miner_crashed}
     end
   end
 
@@ -93,6 +100,19 @@ defmodule Aecore.Miner.Worker do
     cheader = %{header | nonce: next_nonce(nonce)}
     cblock = %{cblock | header: cheader}
     mine_sync_block(Pow.generate(cheader), cblock)
+  end
+
+  defp mine_sync_block(
+         {:error, :miner_was_stopped},
+         %Block{header: %Header{} = cheader} = cblock
+       ) do
+    case Pow.generate(cheader) do
+      {:error, :miner_was_stopped} ->
+        {:error, :miner_crashed}
+
+      pow ->
+        mine_sync_block(pow, cblock)
+    end
   end
 
   defp mine_sync_block({:ok, %Header{} = mined_header}, cblock) do
@@ -163,7 +183,7 @@ defmodule Aecore.Miner.Worker do
     nonce = next_nonce(cblock.header.nonce)
 
     cblock =
-      case rem(nonce, Application.get_env(:aecore, :pow)[:new_candidate_nonce_count]) do
+      case rem(nonce, new_candidate_nonce_count()) do
         0 -> candidate()
         _ -> cblock
       end
@@ -205,7 +225,23 @@ defmodule Aecore.Miner.Worker do
     worker_reply(reply, %{state | job: cleanup_after_worker(job)})
   end
 
-  defp worker_reply({:error, :no_solution}, state), do: mining(state)
+  defp worker_reply({:error, :no_solution}, state), do: mining(state |> Map.delete(:retries))
+
+  defp worker_reply({:error, :miner_was_stopped}, %{block_candidate: nil} = state) do
+    throw({:error, "Miner crashed, #{inspect(state)}"})
+  end
+
+  defp worker_reply({:error, :miner_was_stopped}, %{retries: 10} = state) do
+    throw({:error, "Miner crashed, #{inspect(state)}"})
+  end
+
+  defp worker_reply({:error, :miner_was_stopped}, %{block_candidate: block} = state) do
+    cblock = %Block{block | header: %Header{block.header | nonce: prev_nonce(block.header.nonce)}}
+    retries = if Map.has_key?(state, :retries), do: state.retries + 1, else: 1
+    nstate = Map.put(state, :retries, retries)
+
+    mining(%{nstate | block_candidate: cblock})
+  end
 
   defp worker_reply({:ok, %Header{} = miner_header}, %{block_candidate: cblock} = state) do
     Logger.info(fn -> "#{__MODULE__}: Mined block ##{cblock.header.height},
@@ -357,4 +393,10 @@ defmodule Aecore.Miner.Worker do
 
   def next_nonce(@mersenne_prime), do: 0
   def next_nonce(nonce), do: nonce + 1
+
+  def prev_nonce(0), do: @mersenne_prime
+  def prev_nonce(nonce), do: nonce - 1
+
+  def new_candidate_nonce_count,
+    do: Environment.get_env_or_default("NEW_CANDIDATE_NONCE_COUNT", 100)
 end

@@ -82,7 +82,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         {:error, "#{__MODULE__}: Invalid query or response format definition"}
 
       !Oracle.ttl_is_valid?(ttl) ->
-        {:error, "#{__MODULE__}: Invald ttl"}
+        {:error, "#{__MODULE__}: Invalid ttl"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}

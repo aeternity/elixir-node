@@ -10,6 +10,15 @@ defmodule AecoreCuckooTest do
   alias Aecore.Pow.Cuckoo
   alias Aecore.Chain.{Block, Header}
 
+  setup do
+    orig_params = Application.get_env(:aecore, :pow)
+    Application.put_env(:aecore, :pow, params: {"./lean16", "-t 1", 16})
+
+    on_exit(fn ->
+      Application.put_env(:aecore, :pow, orig_params)
+    end)
+  end
+
   @tag timeout: 60_000
   @tag :cuckoo
   test "Generate solution with a winning nonce and high target threshold" do
