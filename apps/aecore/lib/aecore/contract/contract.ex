@@ -136,8 +136,6 @@ defmodule Aecore.Contract.Contract do
         referers,
         deposit
       ]) do
-    # decoded_active = 
-
     decoded_referers =
       Enum.reduce_while(referers, [], fn referer, acc ->
         case Identifier.decode_from_binary(referer) do
@@ -179,18 +177,17 @@ defmodule Aecore.Contract.Contract do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 
-  @spec decode_active(binary()) :: {:ok, boolean()} | {:error, String.t()}
-  def decode_active(active) when active == <<0>> or active == <<1>> do
-    case :binary.decode_unsigned(active) do
-      0 ->
-        {:ok, false}
+  @spec decode_active(binary() | any()) :: {:ok, boolean()} | {:error, String.t()}
+  def decode_active(<<0>>) do
+    {:ok, false}
+  end
 
-      1 ->
-        {:ok, true}
+  def decode_active(<<1>>) do
+    {:ok, true}
+  end
 
-      _ ->
-        {:error, "#{__MODULE__}: decode_from_list: Invalid contract active: #{inspect(active)}"}
-    end
+  def decode_active(active) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid contract active: #{inspect(active)}"}
   end
 
   @spec store_id(Contract.t()) :: binary()
