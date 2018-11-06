@@ -2,14 +2,14 @@ defmodule Aecore.Contract.Contract do
   @moduledoc """
   Module containing Contract interaction functionality
   """
-  alias Aecore.Contract.Contract
-  alias Aecore.Contract.Tx.ContractCreateTx
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.Pool.Worker, as: Pool
+
   alias Aecore.Chain.Identifier
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Contract.Contract
+  alias Aecore.Contract.Tx.ContractCreateTx
   alias Aecore.Keys
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aeutil.Hash
 
   @version 1
@@ -136,8 +136,6 @@ defmodule Aecore.Contract.Contract do
         referers,
         deposit
       ]) do
-    decoded_active = decode_active(active)
-
     decoded_referers =
       Enum.reduce_while(referers, [], fn referer, acc ->
         case Identifier.decode_from_binary(referer) do
@@ -151,7 +149,7 @@ defmodule Aecore.Contract.Contract do
         end
       end)
 
-    with {:ok, decoded_active_value} <- decoded_active,
+    with {:ok, decoded_active_value} <- decode_active(active),
          true <- is_list(decoded_referers),
          {:ok, decoded_owner_address} <- Identifier.decode_from_binary(owner) do
       {:ok,
@@ -179,12 +177,13 @@ defmodule Aecore.Contract.Contract do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 
-  @spec decode_active(binary()) :: non_neg_integer()
-  def decode_active(active) when active == <<0>> or active == <<1>> do
-    case :binary.decode_unsigned(active) do
-      0 -> {:ok, false}
-      1 -> {:ok, true}
-    end
+  @spec decode_active(binary() | any()) :: {:ok, boolean()} | {:error, String.t()}
+  def decode_active(<<0>>) do
+    {:ok, false}
+  end
+
+  def decode_active(<<1>>) do
+    {:ok, true}
   end
 
   def decode_active(active) do

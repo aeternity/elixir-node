@@ -19,7 +19,7 @@ defmodule Aecore.Tx.Transaction do
   end
 
   alias Aecore.Tx.DataTx
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Chainstate, Identifier}
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
@@ -32,7 +32,7 @@ defmodule Aecore.Tx.Transaction do
           | Aecore.Oracle.Tx.OracleExtendTx.t()
           | Aecore.Oracle.Tx.OracleRegistrationTx.t()
           | Aecore.Oracle.Tx.OracleResponseTx.t()
-          | Aecore.Oracle.Tx.OracleResponseTx.t()
+          | Aecore.Oracle.Tx.OracleQueryTx.t()
           | Aecore.Naming.Tx.NamePreClaimTx.t()
           | Aecore.Naming.Tx.NameClaimTx.t()
           | Aecore.Naming.Tx.NameUpdateTx.t()
@@ -77,7 +77,10 @@ defmodule Aecore.Tx.Transaction do
               tx_types(),
               DataTx.t(),
               context()
-            ) :: {:ok, {Chainstate.accounts(), tx_type_state()}} | {:error, reason()}
+            ) ::
+              {:ok, {Chainstate.accounts(), tx_type_state()}}
+              | {:error, reason()}
+              | {:ok, {atom(), Chainstate.accounts()}}
 
   @doc """
   Default function for checking if the minimum fee is met for all transaction types.

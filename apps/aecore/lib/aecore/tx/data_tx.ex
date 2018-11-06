@@ -5,8 +5,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Keys
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.Transaction
+  alias Aecore.Tx.{DataTx, Transaction}
   alias Aeutil.{Bits, Serialization, TypeToTag}
 
   require Logger
@@ -192,7 +191,7 @@ defmodule Aecore.Tx.DataTx do
     List.first(senders(tx, chainstate))
   end
 
-  @spec ttl(DataTx.t()) :: non_neg_integer()
+  @spec ttl(DataTx.t()) :: non_neg_integer() | atom()
   def ttl(%DataTx{ttl: ttl}) do
     case ttl do
       0 -> :max_ttl
@@ -220,7 +219,7 @@ defmodule Aecore.Tx.DataTx do
       !senders_valid?(senders, type.sender_type()) ->
         {:error, "#{__MODULE__}: One or more sender identifiers invalid"}
 
-      DataTx.ttl(tx) < 0 ->
+      ttl(tx) < 0 ->
         {:error,
          "#{__MODULE__}: Invalid TTL value: #{DataTx.ttl(tx)} can't be a negative integer."}
 

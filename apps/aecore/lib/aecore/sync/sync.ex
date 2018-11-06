@@ -8,8 +8,8 @@ defmodule Aecore.Sync.Sync do
 
   use GenServer
 
-  alias Aecore.Sync.{Jobs, Chain, Task}
-  alias Aecore.Chain.Header
+  alias Aecore.Sync.{Jobs, Chain, Task, Sync}
+  alias Aecore.Chain.{Header, Block}
   alias Aecore.Chain.Worker, as: Chainstate
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker, as: Peers
@@ -513,16 +513,16 @@ defmodule Aecore.Sync.Sync do
   @doc """
   Ping a specified peer
   """
-  @spec ping_peer(peer_id()) :: :ok | {:error, String.t()}
+  @spec ping_peer(peer_id()) :: :ok | :error
   def ping_peer(peer_id) do
     case PeerConnection.ping(peer_id) do
       :ok ->
         Logger.info("#{__MODULE__}: Pinged peer #{inspect(peer_id)} successfully")
         :ok
 
-      {:error, reason} = err ->
-        Logger.info("#{__MODULE__}: Error while pinging peer #{inspect(peer_id)}: #{reason}")
-        err
+      :error ->
+        Logger.info("#{__MODULE__}: Error while pinging peer #{inspect(peer_id)}")
+        :error
     end
   end
 

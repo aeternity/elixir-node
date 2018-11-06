@@ -5,10 +5,10 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   use Aecore.Tx.Transaction
 
-  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Chain.{Identifier, Chainstate}
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys
   alias Aecore.Tx.DataTx
 
@@ -55,7 +55,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   # Callbacks
 
-  @spec get_chain_state_name() :: atom()
+  @spec get_chain_state_name() :: :accounts
   def get_chain_state_name, do: :accounts
 
   @spec sender_type() :: Identifier.type()

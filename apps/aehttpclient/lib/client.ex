@@ -3,10 +3,8 @@ defmodule Aehttpclient.Client do
   Client used for making requests to a node.
   """
 
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.DataTx
+  alias Aecore.Chain.{Block, Header}
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Keys
 
   require Logger
@@ -46,12 +44,12 @@ defmodule Aehttpclient.Client do
     end
   end
 
-  @spec get_peers(term()) :: {:ok, list()}
+  @spec get_peers(binary()) :: {:ok, map()} | {:error, binary}
   def get_peers(uri) do
     get(uri <> "/peers")
   end
 
-  @spec get_account_txs({term(), term()}) :: {:ok, list()} | :error
+  @spec get_account_txs({binary(), binary()}) :: {:ok, map()} | {:error, binary()}
   def get_account_txs({uri, acc}) do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end

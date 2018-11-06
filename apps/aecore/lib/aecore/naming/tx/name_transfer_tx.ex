@@ -5,9 +5,9 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   use Aecore.Tx.Transaction
 
-  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys
   alias Aecore.Naming.NamingStateTree
   alias Aecore.Naming.Tx.NameTransferTx
@@ -86,7 +86,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     end
   end
 
-  @spec get_chain_state_name :: atom()
+  @spec get_chain_state_name :: :naming
   def get_chain_state_name, do: :naming
 
   @spec sender_type() :: Identifier.type()

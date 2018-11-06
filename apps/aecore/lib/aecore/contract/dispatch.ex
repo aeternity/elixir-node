@@ -3,17 +3,16 @@ defmodule Aecore.Contract.Dispatch do
     Module for running contracts on the right VM
   """
 
-  alias Aecore.Contract.Call
   alias Aecore.Contract.VmChain
+  alias Aecore.Chain.Chainstate
   alias Aevm.State, as: State
   alias Aevm.Aevm, as: Aevm
-  alias Aecore.Chain.Chainstate
 
   require Aecore.Contract.ContractConstants, as: Constants
 
   @pubkey_size_bits 256
 
-  @spec run(integer(), map(), Chainstate.t()) :: Call.t()
+  @spec run(integer(), map(), Chainstate.t()) :: tuple()
   def run(Constants.aevm_sophia_01(), call_definition, chain_state) do
     call_aevm_sophia_01(call_definition, chain_state)
   end

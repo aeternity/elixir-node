@@ -18,7 +18,7 @@ defmodule Aecore.Pow.Pow do
   @doc """
   Calls generate of appropriate module
   """
-  @spec generate(Header.t()) :: {:ok, Header.t()}
+  @spec generate(Header.t()) :: {:ok, Header.t()} | {:error, atom()}
   def generate(%Header{} = header) do
     pow_module().generate(header)
   end

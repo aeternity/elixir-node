@@ -4,11 +4,10 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
   This update allows for transferring tokens between peers in the state channel(later for transfers to offchain contract accounts).
   """
 
-  alias Aecore.Channel.Updates.ChannelTransferUpdate
-  alias Aecore.Channel.ChannelOffChainUpdate
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Account.Account
+  alias Aecore.Channel.ChannelOffChainUpdate
+  alias Aecore.Channel.Updates.ChannelTransferUpdate
 
   @behaviour ChannelOffChainUpdate
 

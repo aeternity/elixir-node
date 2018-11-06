@@ -26,6 +26,11 @@ defmodule Aecore.Poi.PoiProof do
   @type state_hash :: binary()
 
   @typedoc """
+  The type of the value in PMT.
+  """
+  @type trie_value :: binary()
+
+  @typedoc """
   Type of the state hash used by this module
   """
   @type internal_state_hash :: :empty | state_hash()
@@ -157,7 +162,7 @@ defmodule Aecore.Poi.PoiProof do
 
   # Wrapper for proof construction on merkle patricia trees. Uses the PoiPersistence wrapper for obtaining functional behaviour although the underlying library relies on side effects in order to achieve persistence.
   @spec side_efects_encapsulating_proof_construction(PoiProof.t(), Trie.t(), Trie.key()) ::
-          {:ok, Trie.value(), map()} | {:error, :key_not_found}
+          {:ok, trie_value(), map()} | {:error, :key_not_found}
   defp side_efects_encapsulating_proof_construction(%PoiProof{} = poi_proof, %Trie{} = trie, key) do
     proof_trie = get_proof_construction_trie(poi_proof)
     {value, _} = Proof.construct_proof({trie, key, proof_trie})
@@ -176,7 +181,7 @@ defmodule Aecore.Poi.PoiProof do
   Adds the value associated with the given key in the given trie to the Poi proof
   """
   @spec add_to_poi(PoiProof.t(), Trie.t(), Trie.key()) ::
-          {:ok, Trie.value(), PoiProof.t()} | {:error, :wrong_root_hash | :key_not_found}
+          {:ok, trie_value(), PoiProof.t()} | {:error, :wrong_root_hash | :key_not_found}
   def add_to_poi(%PoiProof{root_hash: root_hash} = poi_proof, %Trie{} = trie, key) do
     with ^root_hash <- patricia_merkle_trie_root_hash_to_internal_root_hash(trie),
          {:ok, value, proof_db} <-
@@ -194,7 +199,7 @@ defmodule Aecore.Poi.PoiProof do
   @doc """
   Verifies if an entry is present under the given key in the Poi proof
   """
-  @spec verify_poi_entry(PoiProof.t(), Trie.key(), Trie.value()) :: boolean()
+  @spec verify_poi_entry(PoiProof.t(), Trie.key(), trie_value()) :: boolean()
   def verify_poi_entry(%PoiProof{} = poi_proof, key, serialized_value) do
     root_hash = patricia_merkle_trie_root_hash(poi_proof)
     proof_trie = get_readonly_proof_trie(poi_proof)
@@ -204,7 +209,7 @@ defmodule Aecore.Poi.PoiProof do
   @doc """
   Lookups the entry associated with the given key in the Poi proof
   """
-  @spec lookup_in_poi(PoiProof.t(), Trie.key()) :: {:ok, Trie.value()} | :error
+  @spec lookup_in_poi(PoiProof.t(), Trie.key()) :: {:ok, trie_value()} | :error
   def lookup_in_poi(%PoiProof{} = poi_proof, key) do
     root_hash = patricia_merkle_trie_root_hash(poi_proof)
     proof_trie = get_readonly_proof_trie(poi_proof)

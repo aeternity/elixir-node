@@ -6,14 +6,13 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   use Aecore.Tx.Transaction
   @behaviour Aecore.Channel.ChannelTransaction
 
-  alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Channel.Tx.ChannelCreateTx
-  alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree, ChannelOffChainUpdate}
-  alias Aecore.Chain.Identifier
+  alias Aecore.Channel.Tx.ChannelCreateTx
   alias Aecore.Channel.Updates.ChannelCreateUpdate
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Tx.{SignedTx, DataTx}
 
   require Logger
 
@@ -61,7 +60,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     :channel_reserve
   ]
 
-  @spec get_chain_state_name :: atom()
+  @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
   @spec sender_type() :: Identifier.type()

@@ -5,9 +5,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   use GenServer
 
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Genesis
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Block, Genesis, Header}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
@@ -112,7 +110,7 @@ defmodule Aecore.Peers.PeerConnection do
     |> send_request_msg(pid)
   end
 
-  @spec get_header_by_height(non_neg_integer(), binary(), pid()) ::
+  @spec get_header_by_height(pid(), non_neg_integer(), binary()) ::
           {:ok, Header.t()} | {:error, term()}
   def get_header_by_height(pid, height, top_hash) when is_pid(pid) do
     @get_header_by_height

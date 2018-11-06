@@ -73,7 +73,7 @@ defmodule Aecore.Keys do
     end
   end
 
-  @spec key_size_valid?(binary()) :: boolean()
+  @spec key_size_valid?(Identifier.t()) :: boolean()
   def key_size_valid?(%Identifier{value: pubkey})
       when byte_size(pubkey) == @pub_size,
       do: true

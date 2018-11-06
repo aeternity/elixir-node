@@ -5,13 +5,12 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
 
   use Aecore.Tx.Transaction
 
-  alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Channel.Tx.ChannelCloseMutualTx
-  alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Channel.{ChannelStateTree, ChannelStateOnChain}
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Channel.Tx.{ChannelCloseMutualTx, ChannelCreateTx}
+  alias Aecore.Tx.DataTx
 
   require Logger
 
@@ -47,7 +46,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
   """
   defstruct [:channel_id, :initiator_amount, :responder_amount]
 
-  @spec get_chain_state_name :: atom()
+  @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
   @spec sender_type() :: Identifier.type()

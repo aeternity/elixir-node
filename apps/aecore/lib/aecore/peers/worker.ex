@@ -5,10 +5,10 @@ defmodule Aecore.Peers.Worker do
 
   use GenServer
 
-  alias Aecore.Peers.Worker.PeerConnectionSupervisor
-  alias Aecore.Peers.PeerConnection
   alias Aecore.Chain.Block
   alias Aecore.Keys
+  alias Aecore.Peers.Worker.PeerConnectionSupervisor
+  alias Aecore.Peers.PeerConnection
   alias Aehttpclient.Client
 
   require Logger

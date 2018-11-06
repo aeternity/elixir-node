@@ -44,7 +44,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     :ttl
   ]
 
-  @spec get_chain_state_name() :: atom()
+  @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
   @spec sender_type() :: Identifier.type()

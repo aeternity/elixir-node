@@ -86,7 +86,7 @@ defmodule Aecore.Account.Account do
   Builds a SpendTx where the miners public key is used as a sender
   """
   @spec spend(Keys.pubkey(), non_neg_integer(), non_neg_integer(), binary(), non_neg_integer()) ::
-          {:ok, SignedTx.t()} | error()
+          SignedTx.t() | error()
   def spend(receiver, amount, fee, payload, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
@@ -105,7 +105,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           binary(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()} | error()
+        ) :: SignedTx.t() | error()
   def spend(sender, sender_priv_key, receiver, amount, fee, nonce, binary_payload, ttl \\ 0) do
     payload = %{
       receiver: receiver,
@@ -321,7 +321,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()} | error()
+        ) :: SignedTx.t() | error()
   def build_tx(payload, tx_type, sender, sender_prv, fee, nonce, ttl \\ 0) do
     tx = DataTx.init(tx_type, payload, sender, fee, nonce, ttl)
     {:ok, signed_tx} = SignedTx.sign_tx(tx, sender_prv)

@@ -4,12 +4,11 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
   This update is used by ChannelDepositTx for transferring onchain tokens to the state channel.
   """
 
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Channel.Updates.ChannelDepositUpdate
   alias Aecore.Channel.Tx.ChannelDepositTx
   alias Aecore.Channel.ChannelOffChainUpdate
   alias Aecore.Chain.Chainstate
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Account.Account
 
   @behaviour ChannelOffChainUpdate
 

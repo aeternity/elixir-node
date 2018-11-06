@@ -3,11 +3,10 @@ defmodule Aecore.Oracle.Oracle do
   Contains wrapping functions for working with oracles, data validation and TTL calculations.
   """
 
-  alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Oracle.OracleStateTree
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys
   alias Aecore.Oracle.{Oracle, OracleStateTree, OracleQuery}
   alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx, OracleResponseTx, OracleExtendTx}

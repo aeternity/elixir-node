@@ -7,14 +7,11 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   use Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Account.Account
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Contract.{Contract, Call, CallStateTree, ContractStateTree, Dispatch}
-  alias Aecore.Tx.Transaction
-  alias Aecore.Tx.DataTx
-  alias Aecore.Chain.Identifier
-
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Tx.{DataTx, Transaction}
   require Aecore.Contract.ContractConstants, as: Constants
 
   @version 1
@@ -25,7 +22,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   @typedoc "Expected structure for the ContractCreate Transaction"
   @type payload :: %{
           code: binary(),
-          vm_version: byte(),
+          vm_version: 1 | 2,
           deposit: non_neg_integer(),
           amount: non_neg_integer(),
           gas: non_neg_integer(),
@@ -75,7 +72,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   @spec sender_type() :: Identifier.type()
   def sender_type, do: :account
 
-  @spec init(payload()) :: t() | {:error, reason()}
+  @spec init(payload()) :: t()
   def init(%{
         code: code,
         vm_version: vm_version,
@@ -84,20 +81,17 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
         gas: gas,
         gas_price: gas_price,
         call_data: call_data
-      }) do
-    if Enum.member?([Constants.aevm_sophia_01(), Constants.aevm_solidity_01()], vm_version) do
-      %ContractCreateTx{
-        code: code,
-        vm_version: vm_version,
-        deposit: deposit,
-        amount: amount,
-        gas: gas,
-        gas_price: gas_price,
-        call_data: call_data
-      }
-    else
-      {:error, "#{__MODULE__}: Wrong VM version"}
-    end
+      })
+      when vm_version in [Constants.aevm_sophia_01(), Constants.aevm_solidity_01()] do
+    %ContractCreateTx{
+      code: code,
+      vm_version: vm_version,
+      deposit: deposit,
+      amount: amount,
+      gas: gas,
+      gas_price: gas_price,
+      call_data: call_data
+    }
   end
 
   @spec validate(ContractCreateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
@@ -116,7 +110,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           t(),
           DataTx.t(),
           Transaction.context()
-        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
+        ) :: {:ok, {:unused, Chainstate.t()}}
   def process_chainstate(
         accounts,
         chain_state,

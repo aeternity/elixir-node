@@ -4,12 +4,11 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   This update is used by ChannelWithdrawTx for unlocking some of the state channel's tokens.
   """
 
-  alias Aecore.Channel.Updates.ChannelWithdrawUpdate
-  alias Aecore.Channel.Tx.ChannelWithdrawTx
-  alias Aecore.Channel.ChannelOffChainUpdate
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Account.Account
+  alias Aecore.Channel.ChannelOffChainUpdate
+  alias Aecore.Channel.Tx.ChannelWithdrawTx
+  alias Aecore.Channel.Updates.ChannelWithdrawUpdate
 
   @behaviour ChannelOffChainUpdate
 
