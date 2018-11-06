@@ -63,14 +63,6 @@ defmodule Aeutil.Serialization do
 
   def remove_struct(term), do: term
 
-  def cache_key_encode(key, expires) do
-    :sext.encode({expires, key})
-  end
-
-  def cache_key_decode(key) do
-    :sext.decode(key)
-  end
-
   @doc """
   Initializing function to the recursive functionality of serializing a structure
   """

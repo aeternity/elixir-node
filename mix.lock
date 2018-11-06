@@ -44,7 +44,6 @@
   "ranch": {:git, "https://github.com/ninenines/ranch.git", "55c2a9d623454f372a15e99721a37093d8773b48", [tag: "1.4.0"]},
   "rox": {:hex, :rox, "2.2.1", "847593765a119b48b1de381a874b692eac5375c79a6fd82b4c6353b98b7d9fdb", [:mix], [{:rustler, "~> 0.10", [hex: :rustler, repo: "hexpm", optional: false]}], "hexpm"},
   "rustler": {:hex, :rustler, "0.18.0", "db4bd0c613d83a1badc31be90ddada6f9821de29e4afd15c53a5da61882e4f2d", [:mix], [], "hexpm"},
-  "sext": {:git, "https://github.com/uwiger/sext.git", "615eebcf975ec4b4561c6f2b2bc433dabdb2be0f", [tag: "1.4.1"]},
   "sha3": {:git, "https://github.com/szktty/erlang-sha3.git", "dbdfd12ace2fc7e530e697fef81e1e72e90740f9", [ref: "dbdfd12"]},
   "ssl_verify_fun": {:hex, :ssl_verify_fun, "1.1.4", "f0eafff810d2041e93f915ef59899c923f4568f4585904d010387ed74988e77b", [:make, :mix, :rebar3], [], "hexpm"},
   "unicode_util_compat": {:hex, :unicode_util_compat, "0.3.1", "a1f612a7b512638634a603c8f401892afbf99b8ce93a45041f8aaca99cadb85e", [:rebar3], [], "hexpm"},

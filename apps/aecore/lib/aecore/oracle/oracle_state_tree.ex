@@ -15,6 +15,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   @type oracles_state :: %{oracle_tree: Trie.t(), oracle_cache_tree: Trie.t()}
 
   @dummy_val <<0>>
+  @expires_size 64
 
   @spec init_empty() :: oracles_state()
   def init_empty do
@@ -82,7 +83,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     |> PatriciaMerkleTree.all_keys()
     |> Enum.reduce(trees, fn cache_key_encoded, new_trees_state ->
       cache_key_encoded
-      |> Serialization.cache_key_decode()
+      |> decode_cache_key()
       |> filter_expired(expires, cache_key_encoded, new_trees_state)
     end)
   end
@@ -214,7 +215,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   defp which_tree(oracles_state, _where), do: oracles_state.oracle_tree
 
   defp cache_push(oracle_cache_tree, key, expires) do
-    encoded = Serialization.cache_key_encode(key, expires)
+    encoded = encode_cache_key({expires, key})
     enter(oracle_cache_tree, encoded, @dummy_val)
   end
 
@@ -225,7 +226,7 @@ defmodule Aecore.Oracle.OracleStateTree do
       |> Enum.reduce(oracles_state, fn key, new_state ->
         new_cache_tree =
           key
-          |> Serialization.cache_key_decode()
+          |> decode_cache_key()
           |> remove_expired_cache_key(key, new_state)
 
         %{new_state | oracle_cache_tree: new_cache_tree}
@@ -247,4 +248,14 @@ defmodule Aecore.Oracle.OracleStateTree do
 
   defp extract_record_key({:oracle, id}), do: id.value
   defp extract_record_key({:query, oracle_id, id}), do: oracle_id <> id
+
+  defp encode_cache_key({expires, key}) do
+    encoded_key = :erlang.term_to_binary(key)
+    <<expires::unsigned-size(@expires_size), encoded_key::binary()>>
+  end
+
+  defp decode_cache_key(<<expires::unsigned-size(@expires_size), encoded_key::binary()>>) do
+    key = :erlang.binary_to_term(encoded_key)
+    {expires, key}
+  end
 end
