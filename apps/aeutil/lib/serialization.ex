@@ -3,16 +3,13 @@ defmodule Aeutil.Serialization do
   Utility module for serialization
   """
 
-  alias Aecore.Chain.Header
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Naming.NameCommitment
-  alias Aecore.Naming.Name
-  alias Aecore.Chain.Chainstate
-  alias Aeutil.Parser
   alias Aecore.Account.Account
-  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Chain.{Header, Chainstate}
+  alias Aecore.Naming.{Name, NameCommitment}
   alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aeutil.TypeToTag
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aeutil.{Parser, TypeToTag}
 
   require Logger
 
@@ -27,6 +24,7 @@ defmodule Aeutil.Serialization do
           sender: binary() | nil,
           signature: binary() | nil,
           txs_hash: binary(),
+          ttl: non_neg_integer(),
           type: atom()
         }
 
@@ -41,9 +39,9 @@ defmodule Aeutil.Serialization do
   def base64_binary(_, _), do: nil
 
   @doc """
-  Loops through a structure are simplifies it. Removes all the strucutured maps
+  Loops through a structure and simplifies it. Removes all the structured maps
   """
-  @spec remove_struct(list()) :: list()
+  @spec remove_struct(list(map())) :: list()
   def remove_struct(term) when is_list(term) do
     for elem <- term, do: remove_struct(elem)
   end
@@ -63,16 +61,8 @@ defmodule Aeutil.Serialization do
 
   def remove_struct(term), do: term
 
-  def cache_key_encode(key, expires) do
-    :sext.encode({expires, key})
-  end
-
-  def cache_key_decode(key) do
-    :sext.decode(key)
-  end
-
   @doc """
-  Initializing function to the recursive functionality of serializing a strucure
+  Initializing function to the recursive functionality of serializing a structure
   """
   @spec serialize_value(value()) :: value()
   def serialize_value(value), do: serialize_value(value, "")
@@ -171,7 +161,7 @@ defmodule Aeutil.Serialization do
   def serialize_value(value, _), do: value
 
   @doc """
-  Initializing function to the recursive functionality of deserializing a strucure
+  Initializing function to the recursive functionality of deserializing a structure
   """
   @spec deserialize_value(value()) :: value()
   def deserialize_value(value), do: deserialize_value(value, :other)
@@ -274,7 +264,7 @@ defmodule Aeutil.Serialization do
 
   def deserialize_value(value, _), do: value
 
-  @spec serialize_txs_info_to_json(list(raw_data())) :: list(map())
+  @spec serialize_txs_info_to_json([raw_data() | atom()]) :: [map()]
   def serialize_txs_info_to_json(txs_info) when is_list(txs_info) do
     serialize_txs_info_to_json(txs_info, [])
   end
@@ -350,7 +340,7 @@ defmodule Aeutil.Serialization do
         ExRLP.decode(binary)
       rescue
         e ->
-          {:error, "#{__MODULE__}: rlp_decode: IIllegal serialization: #{Exception.message(e)}"}
+          {:error, "#{__MODULE__}: rlp_decode: Illegal serialization: #{Exception.message(e)}"}
       end
 
     case result do

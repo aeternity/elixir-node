@@ -10,9 +10,8 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
   alias Aecore.Channel.Tx.ChannelDepositTx
   alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree, ChannelOffChainUpdate}
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Channel.Updates.ChannelDepositUpdate
 
   require Logger
@@ -61,7 +60,7 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
     :sequence
   ]
 
-  @spec get_chain_state_name :: atom()
+  @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
   @spec sender_type() :: Identifier.type()

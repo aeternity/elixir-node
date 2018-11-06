@@ -5,8 +5,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Keys
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.Transaction
+  alias Aecore.Tx.{DataTx, Transaction}
   alias Aeutil.{Bits, Serialization, TypeToTag}
 
   require Logger
@@ -26,7 +25,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Contract.Tx.ContractCreateTx
           | Aecore.Contract.Tx.ContractCallTx
           | Aecore.Channel.Tx.ChannelCreateTx
-          | Aecore.Channel.Tx.ChannelCloseMutalTx
+          | Aecore.Channel.Tx.ChannelCloseMutualTx
           | Aecore.Channel.Tx.ChannelCloseSoloTx
           | Aecore.Channel.Tx.ChannelSlashTx
           | Aecore.Channel.Tx.ChannelSettleTx
@@ -48,7 +47,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Contract.Tx.ContractCreateTx.t()
           | Aecore.Contract.Tx.ContractCallTx.t()
           | Aecore.Channel.Tx.ChannelCreateTx.t()
-          | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
+          | Aecore.Channel.Tx.ChannelCloseMutualTx.t()
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
           | Aecore.Channel.Tx.ChannelSlashTx.t()
           | Aecore.Channel.Tx.ChannelSettleTx.t()
@@ -75,7 +74,7 @@ defmodule Aecore.Tx.DataTx do
 
   # Parameters
   - type: The type of transaction that may be added to the blockchain
-  - payload: The strcuture of the specified transaction type
+  - payload: The structure of the specified transaction type
   - senders: The public addresses of the accounts originating the transaction. First element of this list is special - it's the main sender. Nonce is applied to main sender Account.
   - fee: The amount of tokens given to the miner
   - nonce: An integer bigger then current nonce of main sender Account. (see senders)
@@ -99,7 +98,7 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Contract.Tx.ContractCallTx,
       Aecore.Channel.Tx.ChannelCreateTx,
       Aecore.Channel.Tx.ChannelCloseSoloTx,
-      Aecore.Channel.Tx.ChannelCloseMutalTx,
+      Aecore.Channel.Tx.ChannelCloseMutualTx,
       Aecore.Channel.Tx.ChannelSlashTx,
       Aecore.Channel.Tx.ChannelSettleTx,
       Aecore.Channel.Tx.ChannelWithdrawTx,
@@ -192,7 +191,7 @@ defmodule Aecore.Tx.DataTx do
     List.first(senders(tx, chainstate))
   end
 
-  @spec ttl(DataTx.t()) :: non_neg_integer()
+  @spec ttl(DataTx.t()) :: non_neg_integer() | atom()
   def ttl(%DataTx{ttl: ttl}) do
     case ttl do
       0 -> :max_ttl
@@ -220,7 +219,7 @@ defmodule Aecore.Tx.DataTx do
       !senders_valid?(senders, type.sender_type()) ->
         {:error, "#{__MODULE__}: One or more sender identifiers invalid"}
 
-      DataTx.ttl(tx) < 0 ->
+      ttl(tx) < 0 ->
         {:error,
          "#{__MODULE__}: Invalid TTL value: #{DataTx.ttl(tx)} can't be a negative integer."}
 

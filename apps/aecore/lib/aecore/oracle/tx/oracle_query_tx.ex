@@ -7,9 +7,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   alias __MODULE__
 
-  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys
   alias Aecore.Oracle.{Oracle, OracleQuery, OracleStateTree}
   alias Aecore.Tx.DataTx
@@ -53,7 +53,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     :response_ttl
   ]
 
-  @spec get_chain_state_name() :: atom()
+  @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
   @spec sender_type() :: Identifier.type()
@@ -120,7 +120,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         {:error, "#{__MODULE__}: Invalid oracle identifier: #{inspect(oracle_address)}"}
 
       !Keys.key_size_valid?(address) ->
-        {:error, "#{__MODULE__}: oracle_adddress size invalid"}
+        {:error, "#{__MODULE__}: oracle_address size invalid"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -266,7 +266,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     tx_fee_is_met && tx_query_fee_is_met
   end
 
-  @spec id(Keys.pubkey(), non_neg_integer(), Identifier.t()) :: binary()
+  @spec id(Keys.pubkey(), non_neg_integer(), Keys.pubkey()) :: binary()
   def id(sender, nonce, oracle_address) do
     bin = sender <> <<nonce::@nonce_size>> <> oracle_address
     Hash.hash(bin)

@@ -46,7 +46,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   """
   defstruct [:channel_id, :offchain_tx, :poi]
 
-  @spec get_chain_state_name :: atom()
+  @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
   @spec sender_type() :: Identifier.type()

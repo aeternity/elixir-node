@@ -85,7 +85,7 @@ defmodule AecoreTxTest do
     assert Account.balance(Chain.chain_state().accounts, sender) == amount
 
     :ok = Miner.mine_sync_block_to_chain()
-    # At this poing the sender should have (reward * 3) tokens,
+    # At this point the sender should have (reward * 3) tokens,
     # enough to mine the transaction in the pool
 
     assert Account.balance(Chain.chain_state().accounts, sender) == reward * 3

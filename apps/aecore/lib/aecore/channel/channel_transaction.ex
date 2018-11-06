@@ -3,14 +3,11 @@ defmodule Aecore.Channel.ChannelTransaction do
     Behaviour specifying the necessary functions which any onchain/offchain transaction modifying the offchain chainstate must implement.
   """
 
-  alias Aecore.Channel.ChannelOffChainUpdate
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.DataTx
-  alias Aecore.Channel.ChannelOffChainTx
-  alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelWithdrawTx, ChannelDepositTx}
   alias Aecore.Chain.Identifier
+  alias Aecore.Channel.{ChannelOffChainUpdate, ChannelOffChainTx, ChannelStateOnChain}
+  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelWithdrawTx, ChannelDepositTx}
   alias Aecore.Keys
+  alias Aecore.Tx.{DataTx, SignedTx}
 
   @typedoc """
   Data structures capable of mutating the offchain chainstate off an state channel

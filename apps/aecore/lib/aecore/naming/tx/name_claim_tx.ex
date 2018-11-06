@@ -73,7 +73,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     end
   end
 
-  @spec get_chain_state_name :: atom()
+  @spec get_chain_state_name :: :naming
   def get_chain_state_name, do: :naming
 
   @spec sender_type() :: Identifier.type()
@@ -151,7 +151,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
          }"}
 
       claim != :none ->
-        {:error, "#{__MODULE__}: Name has aleady been claimed: #{inspect(claim)}"}
+        {:error, "#{__MODULE__}: Name has already been claimed: #{inspect(claim)}"}
 
       true ->
         :ok

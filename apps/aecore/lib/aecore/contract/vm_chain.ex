@@ -3,15 +3,12 @@ defmodule Aecore.Contract.VmChain do
   VM chain api implementation for interaction with our chain
   """
 
-  alias Aecore.Contract.ContractStateTree
-  alias Aecore.Contract.CallStateTree
-  alias Aecore.Contract.Contract
-  alias Aecore.Contract.Call
+  alias Aecore.Account.Account
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Account.Account
-  alias Aecore.Tx.DataTx
+  alias Aecore.Contract.{ContractStateTree, CallStateTree, Contract, Call}
   alias Aecore.Keys
+  alias Aecore.Tx.DataTx
   alias Aevm.ChainApi
 
   @behaviour Aevm.ChainApi
@@ -37,7 +34,7 @@ defmodule Aecore.Contract.VmChain do
     end
   end
 
-  @spec set_store(ChainApi.chain_state(), ChainApi.store()) :: ChainApi.chain_state()
+  @spec set_store(ChainApi.store(), ChainApi.chain_state()) :: ChainApi.chain_state()
   def set_store(
         store,
         %{pubkey: pubkey, chain_state: %{contracts: contract_tree} = chain_state} = state

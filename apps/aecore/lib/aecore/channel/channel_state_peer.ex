@@ -16,7 +16,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   alias Aecore.Channel.Tx.{
     ChannelCreateTx,
-    ChannelCloseMutalTx,
+    ChannelCloseMutualTx,
     ChannelCloseSoloTx,
     ChannelSlashTx,
     ChannelSettleTx,
@@ -165,7 +165,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Creates a channel from a list of mutually signed tx. The first tx in the list must be ChannelCreateTX. All the tx and updates are verified for corectness along the way.
+  Creates a channel from a list of mutually signed tx. The first tx in the list must be ChannelCreateTx. All the tx and updates are verified for correctness along the way.
   """
   @spec from_signed_tx_list(
           list(ChannelTransaction.signed_tx()),
@@ -229,7 +229,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-    Calculates the state hash of the offchain chainstate after aplying the transaction.
+    Calculates the state hash of the offchain chainstate after applying the transaction.
     Only basic verification is done.
   """
   @spec calculate_next_state_hash_for_new_tx(
@@ -268,8 +268,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
   """
   @spec initialize(
           binary(),
-          Wallet.pubkey(),
-          Wallet.pubkey(),
+          Keys.pubkey(),
+          Keys.pubkey(),
           non_neg_integer(),
           Channel.role()
         ) :: ChannelStatePeer.t()
@@ -328,7 +328,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     case calculate_next_state_hash_for_new_tx(unvalidated_unsigned_tx, peer_state) do
       {:ok, state_hash} ->
-        # validation was successfull
+        # validation was successful
         unvalidated_unsigned_tx
         # ties the tx to the updated state
         |> ChannelTransaction.set_state_hash(state_hash)
@@ -845,7 +845,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Creates mutal close tx for open channel. This blocks any new transfers on channel. Returns: altered ChannelStatePeer and ChannelCloseMutalTx
+  Creates mutual close tx for open channel. This blocks any new transfers on channel. Returns: altered ChannelStatePeer and ChannelCloseMutualTx
   """
   @spec close(
           ChannelStatePeer.t(),
@@ -883,7 +883,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
       true ->
         close_tx =
           DataTx.init(
-            ChannelCloseMutalTx,
+            ChannelCloseMutualTx,
             %{
               channel_id: channel_id,
               initiator_amount: initiator_amount - fee_initiator,
@@ -906,7 +906,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Handles incoming channel close tx. If our highest state matches the incoming signs the tx and blocks any new transfers. Returns altered ChannelStatePeer and signed ChannelCloseMutalTx
+  Handles incoming channel close tx. If our highest state matches the incoming signs the tx and blocks any new transfers. Returns altered ChannelStatePeer and signed ChannelCloseMutualTx
   """
   @spec receive_close_tx(
           ChannelStatePeer.t(),
@@ -923,7 +923,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         } = peer_state,
         %SignedTx{
           data: %DataTx{
-            payload: %ChannelCloseMutalTx{
+            payload: %ChannelCloseMutualTx{
               channel_id: tx_id,
               initiator_amount: tx_initiator_amount,
               responder_amount: tx_responder_amount
@@ -966,7 +966,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Changes the channel state to closed. Should only be called when a ChannelCloseMutalTx is mined.
+  Changes the channel state to closed. Should only be called when a ChannelCloseMutualTx is mined.
   """
   @spec closed(ChannelStatePeer.t()) :: ChannelStatePeer.t()
   def closed(%ChannelStatePeer{} = peer_state) do
@@ -976,8 +976,12 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Creates solo close tx for channel. Should only be called when no solo close tx-s were mined for this channel. Returns altered ChannelStatePeer and ChannelCloseSoloTx
   """
-  @spec solo_close(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
-          {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
+  @spec solo_close(
+          ChannelStatePeer.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          Keys.sign_priv_key()
+        ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def solo_close(
         %ChannelStatePeer{channel_id: channel_id, mutually_signed_tx: [most_recent_tx | _]} =
           peer_state,
@@ -1069,7 +1073,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     # We cannot rely on the sequence as SlashTx/SoloTx may not contain a payload.
     # Because SlashTx/SoloTx was mined the state hash present here must have been verified onchain
-    # If it was verfied onchain then we needed to sign it - In conclusion we can rely on the state hash
+    # If it was verified onchain then we needed to sign it - In conclusion we can rely on the state hash
     if slash_hash != ChannelTransaction.unsigned_payload(most_recent_tx).state_hash do
       slash(peer_state, fee, nonce, privkey)
     else
@@ -1081,7 +1085,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Creates channel settle tx.
   """
-  @spec settle(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
+  @spec settle(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           {:ok, SignedTx.t()} | error()
   def settle(
         %ChannelStatePeer{

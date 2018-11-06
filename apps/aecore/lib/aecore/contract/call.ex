@@ -2,13 +2,13 @@ defmodule Aecore.Contract.Call do
   @moduledoc """
   Module defining the structure of a contract call
   """
-  alias Aecore.Contract.Call
-  alias Aecore.Contract.CallStateTree
-  alias Aecore.Contract.Tx.ContractCallTx
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.Pool.Worker, as: Pool
+
+  alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Contract.{Call, CallStateTree}
+  alias Aecore.Contract.Tx.ContractCallTx
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys
   alias Aeutil.Hash
 

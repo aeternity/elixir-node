@@ -8,8 +8,8 @@ defmodule Aecore.Sync.Sync do
 
   use GenServer
 
-  alias Aecore.Sync.{Jobs, Chain, Task}
-  alias Aecore.Chain.Header
+  alias Aecore.Sync.{Jobs, Chain, Task, Sync}
+  alias Aecore.Chain.{Header, Block}
   alias Aecore.Chain.Worker, as: Chainstate
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker, as: Peers
@@ -100,7 +100,7 @@ defmodule Aecore.Sync.Sync do
   ## 1. It has worst top hash than our node, do not include in sync
   ## 2. It has better top hash than our node
   ##    We binary search for a block that we agree upon (could be genesis)
-  ## We add new node to sync pool to sync agreed block upto top of new
+  ## We add new node to sync pool to sync agreed block up to top of new
   ## 1. If we are already synchronizing, we ignore it,
   ##    the ongoing sync will pick that up later
   ## 2. If we are not already synchronizing, we start doing so.
@@ -231,7 +231,7 @@ defmodule Aecore.Sync.Sync do
   @doc """
   Try matching this chain to already existent Task.
   If this chain doesn't match any task chain, then we
-  create a seperate task for it. (This chain is probably a fork)
+  create a separate task for it. (This chain is probably a fork)
   """
   @spec sync_task_for_chain(Chain.t(), Sync.t()) ::
           {:inconclusive, Chain.t(), {:get_header, chain_id(), peer_id(), block_height()}}
@@ -323,7 +323,7 @@ defmodule Aecore.Sync.Sync do
   @doc """
   Get all elements of the pool where the block is already taken from
   the peer (the third element is not false)
-  untill reaching an element whose block hasn't been picked yet.
+  until reaching an element whose block hasn't been picked yet.
   """
   @spec split_pool(list(Task.pool_elem())) ::
           {list(Task.pool_elem()), list(Task.pool_elem()) | []}
@@ -427,7 +427,7 @@ defmodule Aecore.Sync.Sync do
   end
 
   @doc """
-  Handle new worker or change of a proccess related to worker.
+  Handle new worker or change of a process related to worker.
   """
   @spec do_handle_worker(
           {:new_worker, peer_id(), pid()}
@@ -513,16 +513,16 @@ defmodule Aecore.Sync.Sync do
   @doc """
   Ping a specified peer
   """
-  @spec ping_peer(peer_id()) :: :ok | {:error, String.t()}
+  @spec ping_peer(peer_id()) :: :ok | :error
   def ping_peer(peer_id) do
     case PeerConnection.ping(peer_id) do
       :ok ->
         Logger.info("#{__MODULE__}: Pinged peer #{inspect(peer_id)} successfully")
         :ok
 
-      {:error, reason} = err ->
-        Logger.info("#{__MODULE__}: Error while pinging peer #{inspect(peer_id)}: #{reason}")
-        err
+      :error ->
+        Logger.info("#{__MODULE__}: Error while pinging peer #{inspect(peer_id)}")
+        :error
     end
   end
 

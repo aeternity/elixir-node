@@ -103,7 +103,7 @@ defmodule Aecore.Chain.BlockValidation do
         {:error, "#{__MODULE__}: Invalid header time"}
 
       !is_target_met?(header) ->
-        {:error, "#{__MODULE__}: Header hash doesnt meet the target"}
+        {:error, "#{__MODULE__}: Header hash doesn't meet the target"}
 
       true ->
         :ok

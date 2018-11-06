@@ -5,10 +5,10 @@ defmodule PoiEpochCompabilityTest do
 
   use ExUnit.Case
 
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Poi.Poi
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
+  alias Aecore.Keys
+  alias Aecore.Poi.Poi
   alias Aeutil.Serialization
 
   @typedoc """
@@ -195,7 +195,7 @@ defmodule PoiEpochCompabilityTest do
     poi = Poi.construct(chainstate)
     assert root_hash === Poi.calculate_root_hash(poi)
 
-    # In the begining there are no accounts in the Poi
+    # In the beginning there are no accounts in the Poi
     test_poi(poi, [], included_accounts ++ excluded_accounts)
 
     # Add accounts to the Poi one by one and test if they are properly included in the Poi

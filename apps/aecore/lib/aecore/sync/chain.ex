@@ -4,7 +4,7 @@ defmodule Aecore.Sync.Chain do
   """
   alias __MODULE__
   alias Aecore.Chain.Header
-  alias Aecore.Sync.Task
+  alias Aecore.Sync.{Task, Sync}
 
   @type peer_id :: pid()
   @type chain_id :: reference()
@@ -25,7 +25,7 @@ defmodule Aecore.Sync.Chain do
     init_chain(Kernel.make_ref(), [peer_id], header)
   end
 
-  @spec init_chain(chain_id(), peer_id(), Header.t()) :: Chain.t()
+  @spec init_chain(chain_id() | reference(), list(peer_id()), Header.t()) :: Chain.t()
   def init_chain(chain_id, peers, %Header{height: height, prev_hash: prev_hash} = header) do
     header_hash = Header.hash(header)
 

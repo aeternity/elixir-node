@@ -6,13 +6,11 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
   use Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Tx.DataTx
   alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Contract.{Contract, Call, CallStateTree, Dispatch, ContractStateTree}
-  alias Aecore.Tx.Transaction
-
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Tx.{DataTx, Transaction}
   require Aecore.Contract.ContractConstants, as: Constants
 
   @version 1
@@ -149,7 +147,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
           ContractCallTx.t(),
           DataTx.t(),
           Transaction.context()
-        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
+        ) :: {:ok, {atom(), Chainstate.accounts()}}
   def process_chainstate(
         accounts,
         chain_state,
@@ -374,16 +372,10 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
   end
 
   defp check_contract_balance(accounts, sender, amount) do
-    case AccountStateTree.get(accounts, sender) do
-      %Account{} ->
-        check_validity(
-          Account.balance(accounts, sender) >= amount,
-          "#{__MODULE__}: Insufficient funds"
-        )
-
-      :none ->
-        {:error, "#{__MODULE__}: Contract not found"}
-    end
+    check_validity(
+      Account.balance(accounts, sender) >= amount,
+      "#{__MODULE__}: Insufficient funds or Contranct is not found"
+    )
   end
 
   defp check_call(

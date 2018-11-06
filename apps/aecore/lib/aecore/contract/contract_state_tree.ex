@@ -45,7 +45,7 @@ defmodule Aecore.Contract.ContractStateTree do
     update_store(store_id, old_contract_store, store, updated_contract_tree)
   end
 
-  @spec get_contract(contracts_state(), binary()) :: Contract.t()
+  @spec get_contract(contracts_state(), binary()) :: Contract.t() | :none
   def get_contract(contract_tree, key) do
     case PatriciaMerkleTree.lookup(contract_tree, key) do
       {:ok, serialized} ->

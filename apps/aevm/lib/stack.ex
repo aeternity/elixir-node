@@ -20,7 +20,7 @@ defmodule Aevm.Stack do
   def pop(%{stack: stack} = state) do
     case stack do
       [arg | stack] -> {arg, State.set_stack(stack, state)}
-      [] -> throw({:error, "emtpy_stack", stack})
+      [] -> throw({:error, "empty_stack", stack})
     end
   end
 

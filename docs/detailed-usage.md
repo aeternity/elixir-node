@@ -162,42 +162,30 @@ Channel status can be checked with:
 state.fsm_state
 ```
 
-## VM usage
+## Contracts usage
 
-Initial implementation of the AEVM (Aeternity Virtual Machine) that contains all of the functionalities of the EVM (Ethereum Virtual Vachine).
+With every created contract, there is also a normal account with balance, to which we can perform spend transactions. All charges are being subtracted from the account of the creator/caller, before the call of the contract, together with gas*gas_price aeons. Each create/call will use up specific amount of gas, up to the maximum provided. Any remaining portion of gas will be refunded to the caller's account. If the initial call fails, amount and deposit are being returned to the creator.
 
-To run the VM you can use the following command:
-```
-Aevm.loop(
-    State.init_vm(
-      %{
-        :code => State.bytecode_to_bin("0x60013b"),
-        :address => 0,
-        :caller => 0,
-        :data => <<0::256, 42::256>>,
-        :gas => 100_000,
-        :gasPrice => 1,
-        :origin => 0,
-        :value => 0
-      },
-      %{
-        :currentCoinbase => 0,
-        :currentDifficulty => 0,
-        :currentGasLimit => 10000,
-        :currentNumber => 0,
-        :currentTimestamp => 0
-      },
-      %{},
-      0,
-      %{:execute_calls => true}
-    )
-  )
-```
+The miner will add the newly created contract address and contract state to the state tree. The contract address is being generated, using the creator's address and nonce, at the time of the creation.
 
-Where :code is the bytecode in hex that is going to be execute instruction by instruction
+After calling a contract, a call object is being saved in the state tree, containing information about the execution.
 
-You can find each instruction(OP code) either from the file `op_codes.ex`,  [solidity opcodes section](http://solidity.readthedocs.io/en/v0.4.24/assembly.html) or from the tests.
+**Creating a contract:**
+  `Contract.create(code, vm_version, deposit, amount, gas, gas_price, call_data, fee, ttl)`
+  Creates a contract with a given code. The initialization is done differently, depending on the vm_version. Owner of the contract will be the caller of the transaction.
 
-Currently 629 tests pass from the official [EVM tests](http://ethereum-tests.readthedocs.io/en/latest/test_types/vm_tests.html)
+**Calling a contract:**
+  `Call.call_contract(contract, vm_version, amount, gas, gas_price, call_data, call_stack, fee, ttl)`
+  Calls a contract under a given address. A call object will be saved in the state, containing gas used, return result and return type from this call.
 
-Use command `make aevm-test-deps` to clone ethereum tests locally.
+#### Parameters description
+
+- contract - the address of the contract
+- code - the byte code of the contract
+- vm_version - the VM/ABI to use
+- deposit - to be held by the contract, until it is deactivated (an even number, 0 is accepted)
+- amount - optional amount to transfer to the contract account before execution (even if the execution fails)
+- gas - the amount of gas to use
+- gas_price - gas price for the call
+- call_data - call data for the (initial) call. Includes a function name and its arguments, which are to be interpreted. Encoded, according to the contract language's ABI
+- call_stack - call stack (used internally for nested calls, empty when executing contract from top level)
