@@ -544,7 +544,7 @@ defmodule Aecore.Sync.Sync do
 
   defp do_start_sync(peer_id, remote_header_hash) do
     case PeerConnection.get_header_by_hash(remote_header_hash, peer_id) do
-      {:ok, %Header{} = header} ->
+      {:ok, %{header: header}} ->
         Logger.info(
           "#{__MODULE__}: New header received from #{inspect(peer_id)}: #{inspect(header)}"
         )
