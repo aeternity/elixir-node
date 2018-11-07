@@ -44,7 +44,6 @@ defmodule AecoreContractTest do
     end)
   end
 
-  @tag :skip
   test "create contract, retrieve and manipulate its storage" do
     Pool.get_and_empty_pool()
     Miner.mine_sync_block_to_chain()
@@ -91,7 +90,7 @@ defmodule AecoreContractTest do
       contract_bytecode_bin(),
       Constants.aevm_solidity_01(),
       100,
-      100,
+      0,
       100_000,
       1,
       <<>>,
@@ -103,7 +102,7 @@ defmodule AecoreContractTest do
     Call.call_contract(
       contract_address,
       Constants.aevm_solidity_01(),
-      100,
+      0,
       100_000,
       1,
       get_function_declaration_signature_hash(function_name) <> <<argument::256>>,

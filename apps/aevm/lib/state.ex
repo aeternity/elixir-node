@@ -128,14 +128,14 @@ defmodule Aevm.State do
 
   def storage_to_bin(storage) do
     Enum.reduce(storage, %{}, fn {key, value}, acc ->
-      Map.put(acc, <<key::256>>, <<value::256>>)
+      Map.put(acc, :binary.encode_unsigned(key), :binary.encode_unsigned(value))
     end)
   end
 
   def storage_to_int(storage) do
     Enum.reduce(storage, %{}, fn {key, value}, acc ->
-      <<key_int::256>> = key
-      <<value_int::256>> = value
+      key_int = :binary.decode_unsigned(key)
+      value_int = :binary.decode_unsigned(value)
 
       Map.put(acc, key_int, value_int)
     end)

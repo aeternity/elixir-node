@@ -106,18 +106,15 @@ defmodule Aecore.Contract.ContractStateTree do
     merged_store = Map.merge(old_store, new_store)
 
     Enum.reduce(merged_store, tree, fn {s_key, s_value}, tree_acc ->
-      # If key exists in new store, we store the new value
-      # Otherwise, overwrite with empty tree
-      insert_value =
-        if Map.has_key?(new_store, s_key) do
-          s_value
-        else
-          <<>>
-        end
-
       s_tree_key = <<store_id::binary, s_key::binary>>
 
-      PatriciaMerkleTree.enter(tree_acc, s_tree_key, insert_value)
+      # If key exists in new store, we store the new value
+      # Otherwise, overwrite with empty tree
+      if Map.has_key?(new_store, s_key) do
+        PatriciaMerkleTree.enter(tree_acc, s_tree_key, s_value)
+      else
+        PatriciaMerkleTree.delete(tree_acc, s_tree_key)
+      end
     end)
   end
 end
