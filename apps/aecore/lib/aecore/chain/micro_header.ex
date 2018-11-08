@@ -1,4 +1,7 @@
 defmodule Aecore.Chain.MicroHeader do
+  @moduledoc """
+  Module defining the MicroHeader structure
+  """
   alias Aecore.Chain.MicroHeader
 
   @type t :: %MicroHeader{
