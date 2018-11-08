@@ -1,4 +1,7 @@
 defmodule Aecore.Chain.KeyHeader do
+  @moduledoc """
+  Module defining the KeyHeader structure
+  """
   alias Aecore.Chain.KeyHeader
   alias Aecore.Keys
   alias Aeutil.Hash
