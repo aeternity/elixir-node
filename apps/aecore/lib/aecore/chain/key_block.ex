@@ -3,7 +3,7 @@ defmodule Aecore.Chain.KeyBlock do
   alias Aecore.Chain.KeyHeader
 
   @type t :: %KeyBlock{
-          header: KeyHeader
+          header: KeyHeader.t()
         }
 
   defstruct [:header]
