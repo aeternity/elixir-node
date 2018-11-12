@@ -9,7 +9,7 @@ defmodule Aecore.Chain.KeyHeader do
   @tag 1
   @tag_size 1
   @unused_flag 0
-  @unused_flags_size 7
+  @unused_flags_size 31
 
   @version_size 32
   @height_size 64
@@ -62,24 +62,27 @@ defmodule Aecore.Chain.KeyHeader do
   end
 
   @spec encode_to_binary(KeyHeader.t()) :: binary()
-  def encode_to_binary(%KeyHeader{
-        height: height,
-        prev_hash: prev_hash,
-        prev_key_hash: prev_key_hash,
-        root_hash: root_hash,
-        target: target,
-        nonce: nonce,
-        time: time,
-        miner: miner,
-        version: version,
-        pow_evidence: pow_evidence,
-        beneficiary: beneficiary
-      }) do
-    flags_size = @tag_size + @unused_flags_size
+  def encode_to_binary(
+        %KeyHeader{
+          height: height,
+          prev_hash: prev_hash,
+          prev_key_hash: prev_key_hash,
+          root_hash: root_hash,
+          target: target,
+          nonce: nonce,
+          time: time,
+          miner: miner,
+          version: version,
+          pow_evidence: pow_evidence,
+          beneficiary: beneficiary
+        } = header
+      ) do
+    flags = flags()
+    unused_flags_size_bytes = trunc((@tag_size + @unused_flags_size) / 8)
 
     <<
       version::@version_size,
-      flags()::binary-size(flags_size),
+      flags::binary-size(unused_flags_size_bytes),
       height::@height_size,
       prev_hash::binary-size(@header_hash_size),
       prev_key_hash::binary-size(@header_hash_size),
