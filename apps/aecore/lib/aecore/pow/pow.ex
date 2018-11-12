@@ -3,23 +3,23 @@ defmodule Aecore.Pow.Pow do
   An abstraction layer for Proof of Work schemes that invokes the chosen algorithm based on the current environment variables
   """
 
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.KeyHeader
 
   @behaviour Aecore.Pow.PowAlgorithm
 
   @doc """
   Calls verify of appropriate module
   """
-  @spec verify(Header.t()) :: boolean()
-  def verify(%Header{} = header) do
+  @spec verify(KeyHeader.t()) :: boolean()
+  def verify(%KeyHeader{} = header) do
     pow_module().verify(header)
   end
 
   @doc """
   Calls generate of appropriate module
   """
-  @spec generate(Header.t()) :: {:ok, Header.t()} | {:error, atom()}
-  def generate(%Header{} = header) do
+  @spec generate(KeyHeader.t()) :: {:ok, KeyHeader.t()} | {:error, atom()}
+  def generate(%KeyHeader{} = header) do
     pow_module().generate(header)
   end
 
