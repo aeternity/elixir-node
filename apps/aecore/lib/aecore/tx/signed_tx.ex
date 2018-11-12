@@ -106,7 +106,7 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
-  def base58c_decode(<<"tx$", payload::binary>>) do
+  def base58c_decode(<<"tx_", payload::binary>>) do
     Bits.decode58(payload)
   end
 
@@ -120,7 +120,7 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   @spec base58c_decode_root(String.t()) :: binary() | {:error, String.t()}
-  def base58c_decode_root(<<"bx$", payload::binary>>) do
+  def base58c_decode_root(<<"bx_", payload::binary>>) do
     Bits.decode58(payload)
   end
 
@@ -138,7 +138,7 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   @spec base58c_decode_signature(String.t()) :: binary() | {:error, String.t()}
-  def base58c_decode_signature(<<"sg$", payload::binary>>) do
+  def base58c_decode_signature(<<"sg_", payload::binary>>) do
     Bits.decode58(payload)
   end
 

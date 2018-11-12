@@ -191,7 +191,7 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
-  def base58c_decode(<<"bs$", payload::binary>>) do
+  def base58c_decode(<<"bs_", payload::binary>>) do
     Bits.decode58(payload)
   end
 
