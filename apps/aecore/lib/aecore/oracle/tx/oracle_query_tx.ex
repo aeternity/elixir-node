@@ -278,7 +278,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   end
 
   @spec base58c_decode(binary()) :: binary() | {:error, reason()}
-  def base58c_decode(<<"qy$", payload::binary>>) do
+  def base58c_decode(<<"qy_", payload::binary>>) do
     Bits.decode58(payload)
   end
 

@@ -73,7 +73,7 @@ defmodule Aecore.Naming.Name do
   end
 
   @spec base58c_decode_hash(String.t()) :: hash() | {:error, reason()}
-  def base58c_decode_hash(<<"nm$", payload::binary>>) do
+  def base58c_decode_hash(<<"nm_", payload::binary>>) do
     Bits.decode58(payload)
   end
 
