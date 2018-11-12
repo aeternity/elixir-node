@@ -60,7 +60,7 @@ defmodule Aecore.Naming.NameCommitment do
   end
 
   @spec base58c_decode_commitment(String.t()) :: binary() | {:error, reason()}
-  def base58c_decode_commitment(<<"cm$", payload::binary>>) do
+  def base58c_decode_commitment(<<"cm_", payload::binary>>) do
     Bits.decode58(payload)
   end
 

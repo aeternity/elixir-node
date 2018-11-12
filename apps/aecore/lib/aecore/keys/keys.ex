@@ -28,7 +28,7 @@ defmodule Aecore.Keys do
   @pub_size 32
 
   @peer_key_encode "pp"
-  @peer_key_decode "pp$"
+  @peer_key_decode "pp_"
 
   @filename_sign_pub "sign_key.pub"
   @filename_sign_priv "sign_key"

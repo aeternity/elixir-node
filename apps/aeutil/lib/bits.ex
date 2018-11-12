@@ -6,7 +6,7 @@ defmodule Aeutil.Bits do
 
   @spec encode58c(binary(), binary()) :: binary()
   def encode58c(prefix, payload) when is_binary(payload) do
-    prefix <> "$" <> encode58(payload)
+    prefix <> "_" <> encode58(payload)
   end
 
   defp encode58(payload) do

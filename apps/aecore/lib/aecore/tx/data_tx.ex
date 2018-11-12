@@ -383,7 +383,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
-  def base58c_decode(<<"th$", payload::binary>>) do
+  def base58c_decode(<<"th_", payload::binary>>) do
     Bits.decode58(payload)
   end
 
