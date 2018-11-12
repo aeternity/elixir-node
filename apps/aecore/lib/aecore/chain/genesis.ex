@@ -4,7 +4,7 @@ defmodule Aecore.Chain.Genesis do
   """
 
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.{Block, Chainstate, Header}
+  alias Aecore.Chain.{KeyBlock, Chainstate, KeyHeader}
   alias Aecore.Governance.GovernanceConstants, as: Governance
   alias Aecore.Governance.GenesisConstants, as: GenesisConstants
   alias Aeutil.Environment
@@ -13,13 +13,13 @@ defmodule Aecore.Chain.Genesis do
 
   @spec hash() :: binary()
   def hash do
-    Header.hash(header())
+    KeyHeader.hash(header())
   end
 
-  @spec block() :: Block.t()
+  @spec block() :: KeyBlock.t()
   def block do
     header = header()
-    %Block{header: header, txs: []}
+    %KeyBlock{header: header}
   end
 
   @spec populated_trees() :: Chainstate.t()
@@ -71,21 +71,20 @@ defmodule Aecore.Chain.Genesis do
     end
   end
 
-  @spec header() :: Header.t()
-  defp header do
-    header = %{
+  @spec header() :: KeyHeader.t()
+  def header do
+    %KeyHeader{
       height: GenesisConstants.height(),
       prev_hash: GenesisConstants.prev_hash(),
-      txs_hash: GenesisConstants.txs_hash(),
+      prev_key_hash: GenesisConstants.prev_key_hash(),
       root_hash: Chainstate.calculate_root_hash(populated_trees()),
       time: GenesisConstants.time(),
       nonce: GenesisConstants.nonce(),
       miner: GenesisConstants.miner(),
+      beneficiary: GenesisConstants.beneficiary(),
       pow_evidence: GenesisConstants.evidence(),
       version: GenesisConstants.version(),
       target: GenesisConstants.target()
     }
-
-    struct(Header, header)
   end
 end
