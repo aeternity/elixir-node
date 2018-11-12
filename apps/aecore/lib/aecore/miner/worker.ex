@@ -6,7 +6,18 @@ defmodule Aecore.Miner.Worker do
 
   use GenServer
 
-  alias Aecore.Chain.{Block, BlockValidation, Chainstate, Header, Target, Identifier}
+  alias Aecore.Chain.{
+    Genesis,
+    MicroBlock,
+    MicroHeader,
+    KeyBlock,
+    KeyHeader,
+    BlockValidation,
+    Chainstate,
+    Target,
+    Identifier
+  }
+
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Contract.{CallStateTree, Contract}
   alias Aecore.Contract.Tx.{ContractCreateTx, ContractCallTx}
@@ -21,6 +32,9 @@ defmodule Aecore.Miner.Worker do
   require Logger
 
   @mersenne_prime 2_147_483_647
+
+  @micro_block_distance 3000
+  @minimum_distance_from_key_block 1
 
   @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
@@ -67,7 +81,7 @@ defmodule Aecore.Miner.Worker do
   def get_state, do: GenServer.call(__MODULE__, :get_state)
 
   # Mine single block and add it to the chain - Sync
-  @spec mine_sync_block_to_chain() :: Block.t() | error :: term()
+  @spec mine_sync_block_to_chain() :: KeyBlock.t() | error :: term()
   def mine_sync_block_to_chain do
     cblock = candidate()
 
@@ -78,8 +92,8 @@ defmodule Aecore.Miner.Worker do
   end
 
   # Mine single block without adding it to the chain - Sync
-  @spec mine_sync_block(Block.t()) :: {:ok, Block.t()} | {:error, reason :: atom()}
-  def mine_sync_block(%Block{header: %Header{} = header} = cblock) do
+  @spec mine_sync_block(KeyBlock.t()) :: {:ok, KeyBlock.t()} | {:error, reason :: atom()}
+  def mine_sync_block(%KeyBlock{header: %KeyHeader{} = header} = cblock) do
     cond do
       GenServer.call(__MODULE__, :get_state) != :idle ->
         {:error, :miner_is_busy}
@@ -95,7 +109,7 @@ defmodule Aecore.Miner.Worker do
 
   defp mine_sync_block(
          {:error, :no_solution},
-         %Block{header: %Header{nonce: nonce} = header} = cblock
+         %KeyBlock{header: %KeyHeader{nonce: nonce} = header} = cblock
        ) do
     cheader = %{header | nonce: next_nonce(nonce)}
     cblock = %{cblock | header: cheader}
@@ -104,7 +118,7 @@ defmodule Aecore.Miner.Worker do
 
   defp mine_sync_block(
          {:error, :miner_was_stopped},
-         %Block{header: %Header{} = cheader} = cblock
+         %KeyBlock{header: %KeyHeader{} = cheader} = cblock
        ) do
     case Pow.generate(cheader) do
       {:error, :miner_was_stopped} ->
@@ -115,7 +129,7 @@ defmodule Aecore.Miner.Worker do
     end
   end
 
-  defp mine_sync_block({:ok, %Header{} = mined_header}, cblock) do
+  defp mine_sync_block({:ok, %KeyHeader{} = mined_header}, cblock) do
     {:ok, %{cblock | header: mined_header}}
   end
 
@@ -236,14 +250,18 @@ defmodule Aecore.Miner.Worker do
   end
 
   defp worker_reply({:error, :miner_was_stopped}, %{block_candidate: block} = state) do
-    cblock = %Block{block | header: %Header{block.header | nonce: prev_nonce(block.header.nonce)}}
+    cblock = %KeyBlock{
+      block
+      | header: %KeyHeader{block.header | nonce: prev_nonce(block.header.nonce)}
+    }
+
     retries = if Map.has_key?(state, :retries), do: state.retries + 1, else: 1
     nstate = Map.put(state, :retries, retries)
 
     mining(%{nstate | block_candidate: cblock})
   end
 
-  defp worker_reply({:ok, %Header{} = miner_header}, %{block_candidate: cblock} = state) do
+  defp worker_reply({:ok, %KeyHeader{} = miner_header}, %{block_candidate: cblock} = state) do
     Logger.info(fn -> "#{__MODULE__}: Mined block ##{cblock.header.height},
         difficulty target #{cblock.header.target},
         nonce #{cblock.header.nonce}" end)
@@ -253,17 +271,17 @@ defmodule Aecore.Miner.Worker do
     mining(%{state | block_candidate: nil})
   end
 
-  @spec candidate() :: Block.t()
+  @spec candidate() :: KeyBlock.t()
   def candidate do
     top_block = Chain.top_block()
-    top_block_hash = Header.hash(top_block.header)
+
+    top_block_hash = top_block.header.__struct__.hash(top_block.header)
+    top_key_block_hash = Chain.top_key_block_hash()
     {:ok, chain_state} = Chain.chain_state(top_block_hash)
 
-    candidate_height = top_block.header.height + 1
-
     blocks_for_target_calculation =
-      Chain.get_blocks(
-        top_block_hash,
+      Chain.get_key_blocks(
+        top_key_block_hash,
         GovernanceConstants.number_of_blocks_for_target_recalculation()
       )
 
@@ -271,8 +289,37 @@ defmodule Aecore.Miner.Worker do
 
     target = Target.calculate_next_target(timestamp, blocks_for_target_calculation)
 
+    {miner_pubkey, _} = Keys.keypair(:sign)
+
+    create_block(
+      top_block,
+      chain_state,
+      target,
+      timestamp,
+      miner_pubkey,
+      miner_pubkey
+    )
+  end
+
+  @spec generate_and_add_micro_block(
+          Chainstate.t(),
+          non_neg_integer(),
+          binary(),
+          binary(),
+          non_neg_integer()
+        ) :: :ok | {:error, String.t()}
+
+  def generate_and_add_micro_block(
+        chain_state,
+        top_height,
+        prev_hash,
+        prev_key_hash,
+        last_time
+      ) do
     txs_list = get_pool_values()
     ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
+
+    candidate_height = top_height + 1
 
     valid_txs_by_chainstate =
       Chainstate.get_valid_txs(ordered_txs_list, chain_state, candidate_height)
@@ -280,9 +327,43 @@ defmodule Aecore.Miner.Worker do
     valid_txs_by_fee =
       filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, chain_state, candidate_height)
 
-    {miner_pubkey, _} = Keys.keypair(:sign)
+    txs_hash = BlockValidation.calculate_txs_hash(valid_txs_by_fee)
 
-    create_block(top_block, chain_state, target, valid_txs_by_fee, timestamp, miner_pubkey)
+    {:ok, new_chain_state} =
+      Chainstate.calculate_and_validate_chain_state(
+        %MicroBlock{txs: valid_txs_by_fee},
+        chain_state,
+        candidate_height
+      )
+
+    root_hash = Chainstate.calculate_root_hash(new_chain_state)
+
+    time =
+      if prev_hash == prev_key_hash do
+        max(System.system_time(:milliseconds), last_time + @minimum_distance_from_key_block)
+      else
+        max(System.system_time(:milliseconds), last_time + @micro_block_distance)
+      end
+
+    header = %MicroHeader{
+      height: candidate_height,
+      pof_hash: nil,
+      prev_hash: prev_hash,
+      prev_key_hash: prev_key_hash,
+      txs_hash: txs_hash,
+      root_hash: root_hash,
+      time: time,
+      version: 29,
+      signature: <<0::512>>
+    }
+
+    signature = header |> MicroHeader.encode_to_binary() |> Keys.sign()
+
+    header_with_signature = %{header | signature: signature}
+
+    block = %MicroBlock{header: header_with_signature, txs: valid_txs_by_fee}
+    :timer.sleep(@micro_block_distance)
+    Chain.add_block(block)
   end
 
   @spec calculate_miner_reward(list(SignedTx.t()), Chainstate.t()) :: non_neg_integer()
@@ -360,35 +441,41 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  defp create_block(top_block, chain_state, target, valid_txs, timestamp, miner_pubkey) do
-    txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
-
+  defp create_block(top_block, chain_state, target, timestamp, miner_pubkey, beneficiary) do
     {:ok, new_chain_state} =
       Chainstate.calculate_and_validate_chain_state(
-        valid_txs,
+        top_block,
         chain_state,
-        top_block.header.height + 1,
-        miner_pubkey
+        top_block.header.height + 1
       )
 
     root_hash = Chainstate.calculate_root_hash(new_chain_state)
-    top_block_hash = Header.hash(top_block.header)
+
+    {top_block_hash, top_block_key_hash} =
+      case top_block do
+        %KeyBlock{header: %KeyHeader{} = header} ->
+          key_header_hash = KeyHeader.hash(header)
+          {key_header_hash, key_header_hash}
+
+        %MicroBlock{header: %MicroHeader{prev_key_hash: prev_key_hash} = header} ->
+          {MicroHeader.hash(header), prev_key_hash}
+      end
 
     # start from nonce 0, will be incremented in mining
-    unmined_header =
-      Header.create(
-        top_block.header.height + 1,
-        top_block_hash,
-        txs_hash,
-        root_hash,
-        target,
-        0,
-        timestamp,
-        miner_pubkey,
-        Block.current_block_version()
-      )
+    unmined_header = %KeyHeader{
+      height: top_block.header.height + 1,
+      prev_hash: top_block_hash,
+      prev_key_hash: top_block_key_hash,
+      root_hash: root_hash,
+      target: target,
+      nonce: 0,
+      time: timestamp,
+      miner: miner_pubkey,
+      beneficiary: beneficiary,
+      version: 29
+    }
 
-    %Block{header: unmined_header, txs: valid_txs}
+    %KeyBlock{header: unmined_header}
   end
 
   def next_nonce(@mersenne_prime), do: 0
