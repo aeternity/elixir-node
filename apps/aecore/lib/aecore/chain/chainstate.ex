@@ -4,7 +4,7 @@ defmodule Aecore.Chain.Chainstate do
   """
 
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.{Chainstate, Genesis}
+  alias Aecore.Chain.{Chainstate, Genesis, KeyBlock, MicroBlock, KeyHeader, MicroHeader}
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Contract.{Call, CallStateTree, ContractStateTree}
   alias Aecore.Governance.{GenesisConstants, GovernanceConstants}
@@ -64,27 +64,29 @@ defmodule Aecore.Chain.Chainstate do
   @spec calculate_and_validate_chain_state(
           list(),
           Chainstate.t(),
-          non_neg_integer(),
-          Keys.pubkey()
+          non_neg_integer()
         ) :: {:ok, Chainstate.t()} | {:error, String.t()}
-  def calculate_and_validate_chain_state(txs, chainstate, block_height, miner) do
+  def calculate_and_validate_chain_state(block, chainstate, block_height) do
     chainstate_with_pruned_calls = Call.prune_calls(chainstate, block_height)
 
     updated_chainstate =
-      Enum.reduce_while(txs, chainstate_with_pruned_calls, fn tx, chainstate_acc ->
-        case apply_transaction_on_state(chainstate_acc, block_height, tx) do
-          {:ok, updated_chainstate} ->
-            {:cont, updated_chainstate}
+      case block do
+        %KeyBlock{header: %KeyHeader{}} ->
+          chainstate_with_pruned_calls
 
-          {:error, reason} ->
-            {:halt, reason}
-        end
-      end)
+        %MicroBlock{txs: txs} ->
+          Enum.reduce_while(txs, chainstate_with_pruned_calls, fn tx, chainstate_acc ->
+            case apply_transaction_on_state(chainstate_acc, block_height, tx) do
+              {:ok, updated_chainstate} ->
+                {:cont, updated_chainstate}
 
-    final_chainstate =
-      calculate_miner_reward_chain_state(txs, updated_chainstate, block_height, miner)
+              {:error, reason} ->
+                {:halt, reason}
+            end
+          end)
+      end
 
-    case final_chainstate do
+    case updated_chainstate do
       %Chainstate{} = new_chainstate ->
         {:ok, Oracle.remove_expired(new_chainstate, block_height)}
 
