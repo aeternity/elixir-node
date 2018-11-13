@@ -19,16 +19,36 @@ defmodule Aecore.Naming.NameUtil do
 
   @spec normalize_and_validate_name(String.t()) :: {:ok, String.t()} | {:error, reason()}
   def normalize_and_validate_name(name) do
-    normalized_name = normalize_name(name)
+    case validate_normalized_name(name) do
+      :ok ->
+        {:ok, normalize_name(name)}
 
-    case validate_normalized_name(normalized_name) do
-      :ok -> {:ok, normalized_name}
-      {:error, _} = error -> error
+      {:error, _} = error ->
+        error
     end
   end
 
-  @spec normalize_name(String.t()) :: String.t()
-  def normalize_name(name), do: name |> :idna.utf8_to_ascii() |> to_string()
+  @spec normalize_name(String.t() | term()) :: String.t() | {:error, String.t()}
+  def normalize_name(name) when is_binary(name) do
+    name_unicode_list = String.to_charlist(name)
+
+    name_split_count =
+      name_unicode_list
+      |> :idna.encode([{:uts46, true}, {:std3_rules, true}])
+      |> to_string()
+      |> String.split(GovernanceConstants.split_name_symbol())
+      |> length()
+
+    if name_split_count == GovernanceConstants.name_split_check() do
+      List.to_string(name_unicode_list)
+    else
+      {:error, "#{__MODULE__} No label in registrar"}
+    end
+  end
+
+  def normalize_name(name) do
+    {:error, "#{__MODULE__} Invalid input data: #{name} must be type string"}
+  end
 
   @spec namehash(String.t()) :: binary()
   defp namehash(name) do
@@ -79,13 +99,12 @@ defmodule Aecore.Naming.NameUtil do
 
   @spec validate_name_length(String.t()) :: :ok | {:error, reason()}
   defp validate_name_length(name) do
-    case String.length(name) > 0 && String.length(name) < get_max_name_length() do
-      true ->
-        labels = split_name(name)
-        validate_label_length(labels)
-
-      false ->
-        {:error, "#{__MODULE__}: name has not the correct length: #{inspect(name)}"}
+    if String.length(name) > 0 && String.length(name) < get_max_name_length() do
+      name
+      |> split_name()
+      |> validate_label_length()
+    else
+      {:error, "#{__MODULE__}: name has not the correct length: #{inspect(name)}"}
     end
   end
 
