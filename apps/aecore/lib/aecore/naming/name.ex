@@ -91,7 +91,7 @@ defmodule Aecore.Naming.Name do
       }) do
     [
       :binary.encode_unsigned(@version),
-      owner,
+      Identifier.create_encoded_to_binary(owner, :account),
       :binary.encode_unsigned(expires),
       Atom.to_string(status),
       :binary.encode_unsigned(client_ttl),
@@ -101,9 +101,11 @@ defmodule Aecore.Naming.Name do
 
   @spec decode_from_list(integer(), list()) :: {:ok, Name.t()} | {:error, reason()}
   def decode_from_list(@version, [owner, expires, status, client_ttl, pointers]) do
+    {:ok, decoded_owner} = Identifier.decode_from_binary(owner)
+
     {:ok,
      %Name{
-       owner: owner,
+       owner: decoded_owner.value,
        expires: :binary.decode_unsigned(expires),
        status: String.to_atom(status),
        client_ttl: :binary.decode_unsigned(client_ttl),
