@@ -181,25 +181,25 @@ defmodule AecoreSerializationTest do
         block
 
       NamePreClaimTx ->
-        Account.pre_claim("test.aet", 123, 50).data
+        Account.pre_claim("test.test", 123, 50).data
 
       NameClaimTx ->
-        Account.claim("test.aet", 123, 50).data
+        Account.claim("test.test", 123, 50).data
 
       NameUpdateTx ->
-        Account.name_update("test.aet", "{\"test\": 2}", 50, 5000, 50).data
+        Account.name_update("test.test", "{\"test\": 2}", 50, 5000, 50).data
 
       NameTransferTx ->
         transfer_to_pub = acc2_pub
 
-        Account.name_transfer("test.aet", transfer_to_pub, 50).data
+        Account.name_transfer("test.test", transfer_to_pub, 50).data
 
       NameRevokeTx ->
         transfer_to_priv = acc2_priv
         transfer_to_pub = acc2_pub
         next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
 
-        Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 50, next_nonce).data
+        Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.test", 50, next_nonce).data
 
       Name ->
         %Name{

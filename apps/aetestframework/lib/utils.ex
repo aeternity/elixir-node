@@ -110,21 +110,21 @@ defmodule Aetestframework.Utils do
   end
 
   def name_preclaim_cmd do
-    "Account.pre_claim(\"test.aet\", 123, 10)"
+    "Account.pre_claim(\"test.test\", 123, 10)"
   end
 
   def name_claim_cmd do
-    "Account.claim(\"test.aet\", 123, 10)
+    "Account.claim(\"test.test\", 123, 10)
     "
   end
 
   def name_update_cmd do
-    "Account.name_update(\"test.aet\", \"{\\\"test\\\":2}\", 10, 5000, 50)
+    "Account.name_update(\"test.test\", \"{\\\"test\\\":2}\", 10, 5000, 50)
     "
   end
 
   def name_transfer_cmd(transfer_to) do
-    "Account.name_transfer(\"test.aet\",
+    "Account.name_transfer(\"test.test\",
     #{inspect(transfer_to)}, 10)
     "
   end
@@ -133,7 +133,7 @@ defmodule Aetestframework.Utils do
     "Account.name_revoke(
     #{inspect(pubkey)},
     #{inspect(privkey, limit: :infinity)},
-    \"test.aet\",
+    \"test.test\",
     10,
     Account.nonce(Chain.chain_state().accounts, #{inspect(pubkey)}) + 1)
     "
