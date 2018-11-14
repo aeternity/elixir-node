@@ -74,10 +74,10 @@ defmodule AeutilSerializationTest do
         %{
           "data" => %{
             "fee" => 40,
-            "sender" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvcxHFFZ",
+            "sender" => "ak_5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvcxHFFZ",
             "nonce" => 743_183_534_114,
             "payload" => %{
-              "receiver" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
+              "receiver" => "ak_5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
               "amount" => 100,
               "version" => 1,
               "payload" => "some payload"
@@ -85,18 +85,18 @@ defmodule AeutilSerializationTest do
             "type" => "Elixir.Aecore.Account.Tx.SpendTx",
             "ttl" => 0
           },
-          "signature" => "sg$3DUz7ncyT"
+          "signature" => "sg_3DUz7ncyT"
         }
       ],
       "height" => 105,
       "nonce" => 707,
       "pow" => nil,
-      "prev_hash" => "bh$1DEfLSYrZUviQKtzfJvRv1pAJuwn62nk9q9cBUaPjPubMxcBk",
-      "state_hash" => "bs$Eb8yjCFDCzG8oJJKQC3GTHpj3gwuqdjsddSiHrgvvKRbMsWFy",
+      "prev_hash" => "bh_1DEfLSYrZUviQKtzfJvRv1pAJuwn62nk9q9cBUaPjPubMxcBk",
+      "state_hash" => "bs_Eb8yjCFDCzG8oJJKQC3GTHpj3gwuqdjsddSiHrgvvKRbMsWFy",
       "target" => 11,
       "time" => 1_508_834_903_252,
-      "txs_hash" => "bx$cfAVxohyXoDtv7euNiQXxCJH6ULcZjw5gUzaDLi1rwa43ee6",
-      "miner" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
+      "txs_hash" => "bx_cfAVxohyXoDtv7euNiQXxCJH6ULcZjw5gUzaDLi1rwa43ee6",
+      "miner" => "ak_5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
       "version" => 1
     }
   end
