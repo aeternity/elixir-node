@@ -17,8 +17,6 @@ defmodule Aecore.Governance.GenesisConstants do
 
   @beneficiary <<0::256>>
 
-  @version 29
-
   @target 0x2100FFFF
 
   @evidence :no_value
@@ -43,9 +41,6 @@ defmodule Aecore.Governance.GenesisConstants do
 
   @spec beneficiary :: binary()
   def beneficiary, do: @beneficiary
-
-  @spec version :: non_neg_integer()
-  def version, do: @version
 
   @spec target :: non_neg_integer
   def target, do: @target

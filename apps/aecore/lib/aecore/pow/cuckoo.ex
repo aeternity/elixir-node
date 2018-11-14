@@ -13,6 +13,7 @@ defmodule Aecore.Pow.Cuckoo do
 
   alias Aecore.Chain.KeyHeader
   alias Aecore.Pow.Hashcash
+  alias Aecore.Util.Header
   alias Aeutil.{Environment, Hash}
 
   @behaviour Aecore.Pow.PowAlgorithm
@@ -52,7 +53,7 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp hash_header(%{header: %KeyHeader{nonce: nonce} = header} = builder) do
-    blake2b = KeyHeader.hash(%{header | nonce: 0, pow_evidence: :no_value})
+    blake2b = Header.hash(%{header | nonce: 0, pow_evidence: :no_value})
     {:ok, %{builder | hash: pack_header_and_nonce(blake2b, nonce)}}
   end
 

@@ -5,15 +5,16 @@ defmodule Aecore.Chain.Genesis do
 
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{KeyBlock, Chainstate, KeyHeader}
-  alias Aecore.Governance.GovernanceConstants, as: Governance
-  alias Aecore.Governance.GenesisConstants, as: GenesisConstants
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Governance.GenesisConstants
+  alias Aecore.Util.Header
   alias Aeutil.Environment
 
   require Logger
 
   @spec hash() :: binary()
   def hash do
-    KeyHeader.hash(header())
+    Header.hash(header())
   end
 
   @spec block() :: KeyBlock.t()
@@ -30,7 +31,7 @@ defmodule Aecore.Chain.Genesis do
   @spec populated_trees(list()) :: Chainstate.t()
   def populated_trees(accounts) do
     chainstate_init = Chainstate.create_chainstate_trees()
-    miner = {GenesisConstants.miner(), Governance.coinbase_transaction_amount()}
+    miner = {GenesisConstants.miner(), GovernanceConstants.coinbase_transaction_amount()}
 
     Enum.reduce([miner | accounts], chainstate_init, fn {pubkey, balance}, new_trees ->
       new_acounts =
@@ -83,7 +84,7 @@ defmodule Aecore.Chain.Genesis do
       miner: GenesisConstants.miner(),
       beneficiary: GenesisConstants.beneficiary(),
       pow_evidence: GenesisConstants.evidence(),
-      version: GenesisConstants.version(),
+      version: GovernanceConstants.protocol_version(),
       target: GenesisConstants.target()
     }
   end

@@ -6,8 +6,9 @@ defmodule Aecore.Persistence.Worker do
 
   use GenServer
 
-  alias Aecore.Chain.{Block, Header, Target}
+  alias Aecore.Chain.{Block, Target}
   alias Aecore.Persistence.Supplier
+  alias Aecore.Util.Header
   alias Aeutil.Environment
   alias Aeutil.Scientific
   alias Rox.Batch

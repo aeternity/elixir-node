@@ -12,6 +12,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Util.Header, as: HeaderUtils
   alias Aehttpserver.Web.Notify
 
   alias Aecore.Chain.{
@@ -19,9 +20,9 @@ defmodule Aecore.Chain.Worker do
     KeyHeader,
     MicroBlock,
     MicroHeader,
-    Header,
     BlockValidation,
     Block,
+    Header,
     Chainstate,
     Genesis
   }
@@ -71,17 +72,6 @@ defmodule Aecore.Chain.Worker do
 
   @spec clear_state() :: :ok
   def clear_state, do: GenServer.call(__MODULE__, :clear_state)
-
-  @spec top_key_block_hash() :: binary()
-  def top_key_block_hash do
-    case top_block() do
-      %KeyBlock{header: %KeyHeader{} = header} ->
-        KeyHeader.hash(header)
-
-      %MicroBlock{header: %MicroHeader{prev_key_hash: prev_key_hash}} ->
-        prev_key_hash
-    end
-  end
 
   @spec top_block() :: Block.t()
   def top_block do
@@ -253,9 +243,10 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec add_block(Block.t()) :: :ok | {:error, String.t()}
+  @spec add_block(Block.t(), boolean()) :: :ok | {:error, String.t()}
   def add_block(
-        %{header: %{prev_hash: prev_hash, prev_key_hash: prev_key_hash, height: height}} = block
+        %{header: %{prev_hash: prev_hash, prev_key_hash: prev_key_hash, height: height}} = block,
+        loop_micro_block
       ) do
     with {:ok, prev_block} <- get_block(prev_hash),
          {:ok, prev_block_chain_state} <- chain_state(prev_hash),
@@ -266,15 +257,15 @@ defmodule Aecore.Chain.Worker do
            ),
          {:ok, new_chain_state} <-
            Chainstate.calculate_and_validate_chain_state(block, prev_block_chain_state, height) do
-      add_validated_block(block, new_chain_state)
+      add_validated_block(block, new_chain_state, loop_micro_block)
     else
       err -> err
     end
   end
 
-  @spec add_validated_block(Block.t(), Chainstate.t()) :: :ok
-  defp add_validated_block(block, chain_state) do
-    GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
+  @spec add_validated_block(Block.t(), Chainstate.t(), boolean()) :: :ok
+  defp add_validated_block(block, chain_state, loop_micro_block) do
+    GenServer.call(__MODULE__, {:add_validated_block, block, chain_state, loop_micro_block})
   end
 
   @spec chain_state(binary()) :: {:ok, Chainstate.t()} | {:error, String.t()}
@@ -366,7 +357,7 @@ defmodule Aecore.Chain.Worker do
         {:add_validated_block,
          %{
            header: %{prev_hash: prev_hash, height: height, time: time} = header
-         } = new_block, new_chain_state},
+         } = new_block, new_chain_state, loop_micro_blocks},
         _from,
         %{
           blocks_data_map: blocks_data_map,
@@ -375,33 +366,33 @@ defmodule Aecore.Chain.Worker do
           node_is_leader: node_is_leader
         } = state
       ) do
-    new_block_hash = header.__struct__.hash(header)
+    new_block_hash = HeaderUtils.hash(header)
+    new_block_key_hash = HeaderUtils.top_key_block_hash(header)
 
-    {prev_key_hash, new_total_diff, new_node_is_leader} =
+    {new_total_diff, new_node_is_leader} =
       case new_block do
-        %KeyBlock{header: %KeyHeader{target: target, miner: miner} = header} ->
+        %KeyBlock{header: %KeyHeader{target: target, miner: miner}} ->
           new_total_diff = total_diff + Scientific.target_to_difficulty(target)
-          new_header_hash = KeyHeader.hash(header)
           {node_key, _} = Keys.keypair(:sign)
           is_leader = miner == node_key
-          {new_header_hash, new_total_diff, is_leader}
+          {new_total_diff, is_leader}
 
-        %MicroBlock{header: %MicroHeader{prev_key_hash: prev_key_hash} = header, txs: txs} ->
+        %MicroBlock{txs: txs} ->
           # remove txs from pool while we're here as well
           Enum.each(txs, fn tx -> Pool.remove_transaction(tx) end)
-          new_header_hash = MicroHeader.hash(header)
           # micro blocks don't have any difficulty weight, total stays the same
-          {prev_key_hash, total_diff, node_is_leader}
+          {total_diff, node_is_leader}
       end
 
-    if new_node_is_leader do
+    if loop_micro_blocks && new_node_is_leader do
       spawn(fn ->
         Miner.generate_and_add_micro_block(
           new_chain_state,
           height,
           new_block_hash,
-          prev_key_hash,
-          time
+          new_block_key_hash,
+          time,
+          loop_micro_blocks
         )
       end)
     end
@@ -498,7 +489,7 @@ defmodule Aecore.Chain.Worker do
       genesis_chainstate = blocks_data_map[block_hash].chain_state
 
       spawn(fn ->
-        add_validated_block(genesis_block, genesis_chainstate)
+        add_validated_block(genesis_block, genesis_chainstate, false)
       end)
     end
 
