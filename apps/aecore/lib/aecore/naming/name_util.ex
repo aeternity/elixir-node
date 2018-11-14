@@ -30,19 +30,16 @@ defmodule Aecore.Naming.NameUtil do
 
   @spec normalize_name(String.t() | term()) :: String.t() | {:error, String.t()}
   def normalize_name(name) when is_binary(name) do
-    name_unicode_list = String.to_charlist(name)
-
-    name_split_count =
-      name_unicode_list
-      |> :idna.encode([{:uts46, true}, {:std3_rules, true}])
-      |> to_string()
-      |> String.split(GovernanceConstants.split_name_symbol())
-      |> length()
-
-    if name_split_count == GovernanceConstants.name_split_check() do
-      List.to_string(name_unicode_list)
+    with charlist <- String.to_charlist(name),
+         idna_encoded_string <-
+           to_string(:idna.encode(charlist, [{:uts46, true}, {:std3_rules, true}])),
+         length_idna_splitted_string <-
+           length(String.split(idna_encoded_string, GovernanceConstants.split_name_symbol())),
+         true <- length_idna_splitted_string == GovernanceConstants.name_split_check() do
+      idna_encoded_string
     else
-      {:error, "#{__MODULE__} No label in registrar"}
+      false -> {:error, "#{__MODULE__} No label in registrar"}
+      error -> {:error, "#{__MODULE__} Illegal normalize_name call: #{inspect(error)}"}
     end
   end
 
