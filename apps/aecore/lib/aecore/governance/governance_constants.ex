@@ -17,6 +17,10 @@ defmodule Aecore.Governance.GovernanceConstants do
   @oracle_response_base_fee 2
   @oracle_extend_base_fee 1
 
+  @tx_base_gas 15000
+  # It should be a configurable option, Epoch's implementation reads it from config file and if this wasn't defined then they will use this value as a default. 
+  @block_gas_limit 6_000_000
+
   @oracle_ttl_fee_per_block 0.001
 
   # 30min
@@ -98,4 +102,7 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @spec max_txs_per_block :: non_neg_integer()
   def max_txs_per_block, do: @max_txs_per_block
+
+  # Should be adjusted: this value should be read from config first
+  def block_gas_limit(), do: @block_gas_limit
 end

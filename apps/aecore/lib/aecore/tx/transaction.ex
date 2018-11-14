@@ -7,6 +7,8 @@ defmodule Aecore.Tx.Transaction do
   defmacro __using__(_) do
     quote location: :keep do
       alias Aecore.Tx.Transaction
+      alias Aecore.Governance.GovernanceConstants
+
       @behaviour Transaction
 
       @spec chainstate_senders?() :: boolean()
@@ -14,7 +16,12 @@ defmodule Aecore.Tx.Transaction do
         false
       end
 
-      defoverridable chainstate_senders?: 0
+      @spec gas() :: non_neg_integer()
+      def gas() do
+        GovernanceConstants.block_gas_limit()
+      end
+
+      defoverridable chainstate_senders?: 0, gas: 0
     end
   end
 

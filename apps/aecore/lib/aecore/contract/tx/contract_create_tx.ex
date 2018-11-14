@@ -248,6 +248,11 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
+  @spec gas() :: non_neg_integer()
+  def gas() do
+    Constants.create_tx_gas_price_multiplier() * GovernanceConstants.block_gas_limit()
+  end
+
   @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
     fee >= GovernanceConstants.minimum_fee()
