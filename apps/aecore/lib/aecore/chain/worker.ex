@@ -133,7 +133,7 @@ defmodule Aecore.Chain.Worker do
       {:ok, %Header{height: height}} ->
         blocks_to_get = min(top_height() - height, count)
 
-        ## Start from the first block we don't have
+        # Start from the first block we don't have
         start_from = height + 1
         get_headers_forward([], start_from, blocks_to_get)
 
@@ -443,7 +443,7 @@ defmodule Aecore.Chain.Worker do
       Events.publish(:new_top_block, new_block)
 
       # Broadcasting notifications for new block added to chain and new mined transaction
-      # Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
+      # TODO Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
 
       {:reply, :ok,
        %{
