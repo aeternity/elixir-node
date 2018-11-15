@@ -23,7 +23,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           query_format: String.t(),
           response_format: String.t(),
           query_fee: non_neg_integer(),
-          ttl: Oracle.ttl()
+          ttl: Oracle.ttl(),
+          vm_version: non_neg_integer()
         }
 
   @typedoc "Structure of the OracleRegistration Transaction type"
@@ -31,7 +32,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           query_format: String.t(),
           response_format: String.t(),
           query_fee: non_neg_integer(),
-          ttl: Oracle.ttl()
+          ttl: Oracle.ttl(),
+          vm_version: non_neg_integer()
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate."
@@ -41,7 +43,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     :query_format,
     :response_format,
     :query_fee,
-    :ttl
+    :ttl,
+    :vm_version
   ]
 
   @spec get_chain_state_name() :: :oracles
@@ -55,13 +58,15 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         query_format: query_format,
         response_format: response_format,
         query_fee: query_fee,
-        ttl: ttl
+        ttl: ttl,
+        vm_version: vm_version
       }) do
     %OracleRegistrationTx{
       query_format: query_format,
       response_format: response_format,
       query_fee: query_fee,
-      ttl: ttl
+      ttl: ttl,
+      vm_version: vm_version
     }
   end
 
@@ -111,7 +116,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           query_format: query_format,
           response_format: response_format,
           query_fee: query_fee,
-          ttl: ttl
+          ttl: ttl,
+          vm_version: vm_version
         },
         %DataTx{senders: [%Identifier{value: sender}]},
         _context
@@ -123,7 +129,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       query_format: query_format,
       response_format: response_format,
       query_fee: query_fee,
-      expires: Oracle.calculate_absolute_ttl(ttl, block_height)
+      expires: Oracle.calculate_absolute_ttl(ttl, block_height),
+      vm_version: vm_version
     }
 
     {:ok,
@@ -148,7 +155,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         accounts,
         oracles,
         block_height,
-        %OracleRegistrationTx{ttl: ttl} = tx,
+        %OracleRegistrationTx{ttl: ttl, vm_version: vm_version} = tx,
         %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
         _context
       ) do
@@ -161,6 +168,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
       OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
+
+      Oracle.check_vm_version(vm_version) != :ok ->
+        {:error, "#{__MODULE__}:  Bad VM version: #{inspect(vm_version)}"}
 
       true ->
         :ok
@@ -204,7 +214,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           ttl: oracle_ttl,
           query_format: query_format,
           response_format: response_format,
-          query_fee: query_fee
+          query_fee: query_fee,
+          vm_version: vm_version
         },
         %DataTx{senders: [sender], nonce: nonce, fee: fee, ttl: ttl}
       ) do
@@ -220,7 +231,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       ttl_type,
       :binary.encode_unsigned(oracle_ttl.ttl),
       :binary.encode_unsigned(fee),
-      :binary.encode_unsigned(ttl)
+      :binary.encode_unsigned(ttl),
+      :binary.encode_unsigned(vm_version)
     ]
   end
 
@@ -234,7 +246,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         encoded_ttl_type,
         ttl_value,
         fee,
-        ttl
+        ttl,
+        vm_version
       ]) do
     ttl_type =
       encoded_ttl_type
@@ -244,7 +257,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       query_format: query_format,
       response_format: response_format,
       ttl: %{ttl: :binary.decode_unsigned(ttl_value), type: ttl_type},
-      query_fee: :binary.decode_unsigned(query_fee)
+      query_fee: :binary.decode_unsigned(query_fee),
+      vm_version: :binary.decode_unsigned(vm_version)
     }
 
     DataTx.init_binary(
