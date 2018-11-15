@@ -46,8 +46,8 @@ defmodule Aecore.Chain.Identifier do
   end
 
   @spec create_encoded_to_binary_list(list(value()), type()) :: list(binary())
-  def create_encoded_to_binary_list([%Identifier{} = id | rest], type) do
-    [create_encoded_to_binary(id, type) | create_encoded_to_binary_list(rest, type)]
+  def create_encoded_to_binary_list([value | rest], type) do
+    [create_encoded_to_binary(value, type) | create_encoded_to_binary_list(rest, type)]
   end
 
   def create_encoded_to_binary_list([], _) do
