@@ -353,7 +353,7 @@ defmodule Aecore.Channel.Worker do
           :ok | error()
   def snapshot(channel_id, fee, nonce, priv_key)
       when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
-      GenServer.call(__MODULE__, {:snapshot, channel_id, fee, nonce, priv_key})
+    GenServer.call(__MODULE__, {:snapshot, channel_id, fee, nonce, priv_key})
   end
 
   @doc """
@@ -675,11 +675,10 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:snapshot, channel_id, fee, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, channel_id)
 
-    with {:ok, tx} <-
-      ChannelStatePeer.snapshot(peer_state, fee, nonce, priv_key),
+    with {:ok, tx} <- ChannelStatePeer.snapshot(peer_state, fee, nonce, priv_key),
          :ok <- Pool.add_transaction(tx) do
-        {:reply, :ok, state}
-      else
+      {:reply, :ok, state}
+    else
       {:error, _} = err ->
         {:reply, err, state}
 

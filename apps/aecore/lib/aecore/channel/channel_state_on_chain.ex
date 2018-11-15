@@ -456,22 +456,30 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   """
   @spec validate_snapshot(ChannelStateOnChain.t(), ChannelStateOffChain.t()) ::
           :ok | {:error, binary()}
-  def validate_snapshot(
-        %ChannelStateOnChain{},
-        %ChannelStateOffChain{sequence: 0}
-      ) do
+  def validate_snapshot(%ChannelStateOnChain{}, %ChannelStateOffChain{sequence: 0}) do
     {:error, "#{__MODULE__}: Cannot snapshot with initial offchain state"}
   end
 
-  def validate_snapshot(%ChannelStateOnChain{} = channel, %ChannelStateOffChain{} = offchain_state) do
+  def validate_snapshot(
+        %ChannelStateOnChain{} = channel,
+        %ChannelStateOffChain{} = offchain_state
+      ) do
     cond do
       channel.slash_sequence >= offchain_state.sequence ->
-        {:error, "#{__MODULE__}: Offchain state is too old - latest known sequence is #{channel.slash_sequence} vs submitted #{offchain_state.sequence}"}
+        {:error,
+         "#{__MODULE__}: Offchain state is too old - latest known sequence is #{
+           channel.slash_sequence
+         } vs submitted #{offchain_state.sequence}"}
 
-      channel.initiator_amount + channel.responder_amount != ChannelStateOffChain.total_amount(offchain_state) ->
+      channel.initiator_amount + channel.responder_amount !=
+          ChannelStateOffChain.total_amount(offchain_state) ->
         onchain_balance = channel.initiator_amount + channel.responder_amount
         offchain_balance = ChannelStateOffChain.total_amount(offchain_state)
-        {:error, "#{__MODULE__}: Invalid total amount. Onchain balance is #{onchain_balance} vs submitted offchain balance #{offchain_balance} "}
+
+        {:error,
+         "#{__MODULE__}: Invalid total amount. Onchain balance is #{onchain_balance} vs submitted offchain balance #{
+           offchain_balance
+         } "}
 
       true ->
         ChannelStateOffChain.validate(offchain_state, pubkeys(channel))
@@ -481,17 +489,18 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @doc """
   Executes snapshot on channel. The submitted offchain state should be validated before with validate_snapshot
   """
-  @spec apply_snapshot(ChannelStateOnChain.t(), ChannelStateOffChain.t()) :: ChannelStateOnChain.t()
+  @spec apply_snapshot(ChannelStateOnChain.t(), ChannelStateOffChain.t()) ::
+          ChannelStateOnChain.t()
   def apply_snapshot(%ChannelStateOnChain{} = channel, %ChannelStateOffChain{
         sequence: sequence,
         initiator_amount: initiator_amount,
         responder_amount: responder_amount
-  }) do
+      }) do
     %ChannelStateOnChain{
-    channel
-    | slash_sequence: sequence,
-      initiator_amount: initiator_amount,
-      responder_amount: responder_amount
+      channel
+      | slash_sequence: sequence,
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount
     }
   end
 

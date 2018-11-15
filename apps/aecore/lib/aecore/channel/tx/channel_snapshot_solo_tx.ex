@@ -22,7 +22,7 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   @typedoc "Expected structure for the ChannelSnapshotSolo Transaction"
   @type payload :: %{
           channel_id: binary(),
-          state: map(),
+          state: map()
         }
 
   @typedoc "Reason for the error"
@@ -65,7 +65,10 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   Checks transactions internal contents validity
   """
   @spec validate(ChannelSnapshotSoloTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelSnapshotSoloTx{state: %ChannelStateOffChain{sequence: sequence}}, %DataTx{} = data_tx) do
+  def validate(
+        %ChannelSnapshotSoloTx{state: %ChannelStateOffChain{sequence: sequence}},
+        %DataTx{} = data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do
@@ -145,7 +148,7 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
 
       true ->
         ChannelStateOnChain.validate_snapshot(channel, state)
-   end
+    end
   end
 
   @spec deduct_fee(
@@ -155,7 +158,13 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.account()
-  def deduct_fee(%Trie{} = accounts, block_height, %ChannelSnapshotSoloTx{}, %DataTx{} = data_tx, fee) do
+  def deduct_fee(
+        %Trie{} = accounts,
+        block_height,
+        %ChannelSnapshotSoloTx{},
+        %DataTx{} = data_tx,
+        fee
+      ) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
@@ -205,5 +214,4 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
-
 end

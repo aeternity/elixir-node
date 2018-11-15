@@ -1087,16 +1087,35 @@ defmodule Aecore.Channel.ChannelStatePeer do
   Creates ChannelSnapshotSoloTX for the given channel from the highest signed state. Can only be called if channel is open or updating.
   Does not modify the peer state. Returns ChannelSnapshotSoloTx
   """
-  @spec snapshot(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) :: ChannelSnapshotSoloTx
-  def snapshot(%ChannelStatePeer{highest_signed_state: %ChannelStateOffChain{sequence: 0}}, _fee, _nonce, _priv_key) do
+  @spec snapshot(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
+          ChannelSnapshotSoloTx
+  def snapshot(
+        %ChannelStatePeer{highest_signed_state: %ChannelStateOffChain{sequence: 0}},
+        _fee,
+        _nonce,
+        _priv_key
+      ) do
     {:error, "#{__MODULE__}: Can't snapshot without a signed state"}
   end
 
   def snapshot(
-        %ChannelStatePeer{fsm_state: state, highest_signed_state: %ChannelStateOffChain{} = signed_state} = peer_state,
-        fee, nonce, priv_key) when state === :open or state === :update do
+        %ChannelStatePeer{
+          fsm_state: state,
+          highest_signed_state: %ChannelStateOffChain{} = signed_state
+        } = peer_state,
+        fee,
+        nonce,
+        priv_key
+      )
+      when state === :open or state === :update do
     data =
-      DataTx.init(ChannelSnapshotSoloTx, %{state: signed_state}, node_pubkey(peer_state), fee, nonce)
+      DataTx.init(
+        ChannelSnapshotSoloTx,
+        %{state: signed_state},
+        node_pubkey(peer_state),
+        fee,
+        nonce
+      )
 
     {:ok, snapshot_tx} = SignedTx.sign_tx(data, node_pubkey(peer_state), priv_key)
     {:ok, snapshot_tx}

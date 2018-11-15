@@ -449,10 +449,11 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 120_000
-  test "create channel, transfer funds twice, submit snapshot, tries to submit a snapshot of an outdated state, mutual close", ctx do
+  test "create channel, transfer funds twice, submit snapshot, tries to submit a snapshot of an outdated state, mutual close",
+       ctx do
     id = create_channel(ctx)
 
-    #transfer 1
+    # transfer 1
     {:ok, state1} = call_s1({:transfer, id, 50, ctx.sk1})
     assert :update == get_fsm_state_s1(id)
     {:ok, signed_state1} = call_s2({:recv_state, state1, ctx.sk2})
@@ -464,7 +465,7 @@ defmodule AecoreChannelTest do
     assert 200 == signed_state1.responder_amount
     assert 1 == signed_state1.sequence
 
-    #second transfer
+    # second transfer
     {:ok, state2} = call_s2({:transfer, id, 170, ctx.sk2})
     {:ok, signed_state2} = call_s1({:recv_state, state2, ctx.sk1})
     {:ok, nil} = call_s2({:recv_state, signed_state2, ctx.sk2})
@@ -473,7 +474,7 @@ defmodule AecoreChannelTest do
     assert 30 == signed_state2.responder_amount
     assert 2 == signed_state2.sequence
 
-    #submits snapshot
+    # submits snapshot
     :ok = call_s1({:snapshot, id, 10, 2, ctx.sk1})
     assert :open == get_fsm_state_s1(id)
     assert :open == get_fsm_state_s2(id)
@@ -485,7 +486,7 @@ defmodule AecoreChannelTest do
     assert channel.slash_sequence == 2
     assert ChannelStateOnChain.active?(channel) == true
 
-    #tries snapshot with outdated state
+    # tries snapshot with outdated state
     snapshot_data =
       DataTx.init(
         ChannelSnapshotSoloTx,
@@ -498,14 +499,14 @@ defmodule AecoreChannelTest do
     {:ok, tx} = SignedTx.sign_tx(snapshot_data, ctx.pk2, ctx.sk2)
     assert :ok == Pool.add_transaction(tx)
 
-    #snapshot fails
+    # snapshot fails
     :ok = Miner.mine_sync_block_to_chain()
     assert map_size(Pool.get_pool()) == 1
 
     assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ==
              true
 
-   #mutual close
+    # mutual close
     {:ok, close_tx} = call_s1({:close, id, {5, 5}, 3, ctx.sk1})
     {:ok, signed_close_tx} = call_s2({:recv_close_tx, id, close_tx, {5, 5}, ctx.sk2})
     assert :closing == get_fsm_state_s1(id)
@@ -547,19 +548,19 @@ defmodule AecoreChannelTest do
     close_height = Chain.top_height() + 2
     channel = ChannelStateTree.get(Chain.chain_state().channels, id)
     assert channel.slash_close == close_height
-    assert ChannelStateOnChain.active?(channel) ==
-             false
+    assert ChannelStateOnChain.active?(channel) == false
 
-    #submiting a snapshot fails
+    # submiting a snapshot fails
     {:error, _} = call_s1({:snapshot, id, 10, 2, ctx.sk1})
-    #the second peer was not notified of the solo_close so a snapshot will be submited to the pool but not included in a block
+
+    # the second peer was not notified of the solo_close so a snapshot will be submited to the pool but not included in a block
     assert :open == get_fsm_state_s2(id)
     assert map_size(Pool.get_pool()) == 0
     :ok = call_s2({:snapshot, id, 10, 2, ctx.sk2})
     :ok = Miner.mine_sync_block_to_chain()
     assert map_size(Pool.get_pool()) == 1
 
-    #settle the channel
+    # settle the channel
     {:ok, s1_state} = call_s1({:get_channel, id})
     {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 3, ctx.sk1)
     assert :ok == Pool.add_transaction(settle_tx)
