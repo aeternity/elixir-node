@@ -61,7 +61,11 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   def validate(
         %ChannelSnapshotSoloTx{
           channel_id: internal_channel_id,
-          offchain_tx: %ChannelOffChainTx{channel_id: offchain_tx_channel_id, sequence: sequence}
+          offchain_tx: %ChannelOffChainTx{
+            channel_id: offchain_tx_channel_id,
+            sequence: sequence,
+            state_hash: state_hash
+          }
         },
         %DataTx{senders: senders}
       ) do
@@ -80,6 +84,9 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
          "#{__MODULE__}: OffChainTx channel id mismatch, expected #{inspect(internal_channel_id)}, got #{
            inspect(offchain_tx_channel_id)
          }"}
+
+      byte_size(state_hash) != 32 ->
+        {:error, "#{__MODULE__}: Invalid state hash size byte_size(state_hash)"}
 
       true ->
         :ok

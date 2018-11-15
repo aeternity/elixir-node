@@ -273,7 +273,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
         channel.sequence >= offchain_tx.sequence ->
           {:error,
-           "#{__MODULE__}: OffChain state is too old, expected newer than #{channel.sequence}, got #{
+           "#{__MODULE__}: OffChainTx is too old, expected newer than #{channel.sequence}, got #{
              offchain_tx.sequence
            }"}
 
@@ -359,31 +359,21 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   @spec validate_withdraw(
           ChannelStateOnChain.t(),
-          Keys.pubkey(),
           non_neg_integer(),
           non_neg_integer()
         ) :: :ok | error()
   def validate_withdraw(
         %ChannelStateOnChain{
-          initiator_pubkey: initiator_pubkey,
-          responder_pubkey: responder_pubkey,
           total_amount: total_amount,
           sequence: sequence,
           channel_reserve: channel_reserve
         },
-        tx_account,
         tx_amount,
         tx_sequence
       ) do
     cond do
       sequence >= tx_sequence ->
         {:error, "Too old state - latest known sequence is #{sequence} but we got #{tx_sequence}"}
-
-      tx_account != initiator_pubkey and tx_account != responder_pubkey ->
-        {:error,
-         "Withdraw destination must be a party of this channel. Tried to withdraw from #{
-           tx_account
-         } but the parties are #{initiator_pubkey} and #{responder_pubkey}"}
 
       tx_amount < 0 ->
         {:error, "Withdraw of negative amount(#{tx_amount}) is forbidden"}
@@ -422,33 +412,22 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   @spec validate_deposit(
           ChannelStateOnChain.t(),
-          Keys.pubkey(),
           non_neg_integer(),
           non_neg_integer()
         ) :: :ok | error()
   def validate_deposit(
         %ChannelStateOnChain{
-          initiator_pubkey: initiator_pubkey,
-          responder_pubkey: responder_pubkey,
           sequence: sequence
         },
-        tx_account,
         tx_amount,
         tx_sequence
-      )
-      when is_binary(tx_account) do
+      ) do
     cond do
       sequence >= tx_sequence ->
         {:error, "Too old state - latest known sequence is #{sequence} but we got #{tx_sequence}"}
 
       tx_amount < 0 ->
         {:error, "Deposit of negative amount(#{tx_amount}) is forbidden"}
-
-      tx_account != initiator_pubkey and tx_account != responder_pubkey ->
-        {:error,
-         "Deposit destination must be a party of this channel. Tried to deposit tokens to #{
-           tx_account
-         } but the parties are #{initiator_pubkey} and #{responder_pubkey}"}
 
       true ->
         :ok
@@ -477,55 +456,38 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   @doc """
-  Validates Snapshot states.
+  Validates the payload of ChannelSnapshotSoloTx.
   """
-  @spec validate_snapshot(ChannelStateOnChain.t(), ChannelStateOffChain.t()) ::
+  @spec validate_snapshot(ChannelStateOnChain.t(), ChannelOffChainTx.t()) ::
           :ok | {:error, binary()}
-  def validate_snapshot(%ChannelStateOnChain{}, %ChannelStateOffChain{sequence: 0}) do
-    {:error, "#{__MODULE__}: Cannot snapshot with initial offchain state"}
-  end
-
   def validate_snapshot(
         %ChannelStateOnChain{} = channel,
-        %ChannelStateOffChain{} = offchain_state
+        %ChannelOffChainTx{} = offchain_tx
       ) do
     cond do
-      channel.slash_sequence >= offchain_state.sequence ->
+      channel.sequence >= offchain_tx.sequence ->
         {:error,
-         "#{__MODULE__}: Offchain state is too old - latest known sequence is #{
-           channel.slash_sequence
-         } vs submitted #{offchain_state.sequence}"}
-
-      channel.initiator_amount + channel.responder_amount !=
-          ChannelStateOffChain.total_amount(offchain_state) ->
-        onchain_balance = channel.initiator_amount + channel.responder_amount
-        offchain_balance = ChannelStateOffChain.total_amount(offchain_state)
-
-        {:error,
-         "#{__MODULE__}: Invalid total amount. Onchain balance is #{onchain_balance} vs submitted offchain balance #{
-           offchain_balance
-         } "}
+         "#{__MODULE__}: OffChainTx is too old, expected newer than #{channel.sequence}, got #{
+           offchain_tx.sequence
+         }"}
 
       true ->
-        ChannelStateOffChain.validate(offchain_state, pubkeys(channel))
+        ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
     end
   end
 
   @doc """
-  Executes snapshot on channel. The submitted offchain state should be validated before with validate_snapshot
+  Applies the provided payload of ChannelSnapshotSoloTx to the state of the channel. The contents should be validated by &validate_snapshot/2
   """
-  @spec apply_snapshot(ChannelStateOnChain.t(), ChannelStateOffChain.t()) ::
-          ChannelStateOnChain.t()
-  def apply_snapshot(%ChannelStateOnChain{} = channel, %ChannelStateOffChain{
+  @spec apply_snapshot(ChannelStateOnChain.t(), ChannelOffChainTx.t()) :: ChannelStateOnChain.t()
+  def apply_snapshot(%ChannelStateOnChain{} = channel, %ChannelOffChainTx{
         sequence: sequence,
-        initiator_amount: initiator_amount,
-        responder_amount: responder_amount
+        state_hash: state_hash
       }) do
     %ChannelStateOnChain{
       channel
-      | slash_sequence: sequence,
-        initiator_amount: initiator_amount,
-        responder_amount: responder_amount
+      | sequence: sequence,
+        state_hash: state_hash
     }
   end
 

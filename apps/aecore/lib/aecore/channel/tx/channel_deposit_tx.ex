@@ -221,8 +221,14 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
       !ChannelStateOnChain.active?(channel) ->
         {:error, "#{__MODULE__}: Can't deposit from inactive channel."}
 
+      !ChannelStateOnChain.is_peer?(channel, depositing_account) ->
+        {:error,
+         "Deposit destination must be a party of this channel. Tried to deposit tokens to #{
+           depositing_account
+         } but the parties are #{channel.initiator_pubkey} and #{channel.responder_pubkey}"}
+
       true ->
-        ChannelStateOnChain.validate_deposit(channel, depositing_account, amount, sequence)
+        ChannelStateOnChain.validate_deposit(channel, amount, sequence)
     end
   end
 
