@@ -17,7 +17,6 @@ defmodule Aecore.Governance.GovernanceConstants do
   @oracle_response_base_fee 2
   @oracle_extend_base_fee 1
 
-  @tx_base_gas 15000
   # It should be a configurable option, Epoch's implementation reads it from config file and if this wasn't defined then they will use this value as a default. 
   @block_gas_limit 6_000_000
 
