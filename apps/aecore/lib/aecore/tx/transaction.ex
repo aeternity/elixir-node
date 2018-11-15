@@ -16,8 +16,8 @@ defmodule Aecore.Tx.Transaction do
         false
       end
 
-      @spec gas() :: non_neg_integer()
-      def gas() do
+      @spec gas :: non_neg_integer()
+      def gas do
         GovernanceConstants.block_gas_limit()
       end
 
