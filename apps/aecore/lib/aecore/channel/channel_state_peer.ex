@@ -1084,44 +1084,47 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Creates ChannelSnapshotSoloTX for the given channel from the highest signed state. Can only be called if channel is open or updating.
-  Does not modify the peer state. Returns ChannelSnapshotSoloTx
+  Creates a snapshot transaction from the most recent mutually signed transaction. This transaction must be a ChannelOffChainTx, otherwise the onchain state contains the most recent offchain state hash and a snapshot is unnecessary.
+  Can be called anytime after the channel was opened and before the channel is closed.
   """
-  @spec snapshot(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
-          ChannelSnapshotSoloTx
-  def snapshot(
-        %ChannelStatePeer{highest_signed_state: %ChannelStateOffChain{sequence: 0}},
-        _fee,
-        _nonce,
-        _priv_key
-      ) do
-    {:error, "#{__MODULE__}: Can't snapshot without a signed state"}
-  end
-
+  @spec snapshot(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
+          {:ok, SignedTx.t()} | error()
   def snapshot(
         %ChannelStatePeer{
           fsm_state: state,
-          highest_signed_state: %ChannelStateOffChain{} = signed_state
+          channel_id: channel_id,
+          mutually_signed_tx: [%ChannelOffChainTx{} = offchain_tx | _]
         } = peer_state,
         fee,
         nonce,
         priv_key
       )
-      when state === :open or state === :update do
+      when state in [:awaiting_full_tx, :awaiting_tx_confirmed, :open] do
     data =
       DataTx.init(
         ChannelSnapshotSoloTx,
-        %{state: signed_state},
-        node_pubkey(peer_state),
+        %{channel_id: channel_id, offchain_tx: offchain_tx},
+        our_pubkey(peer_state),
         fee,
         nonce
       )
 
-    {:ok, snapshot_tx} = SignedTx.sign_tx(data, node_pubkey(peer_state), priv_key)
-    {:ok, snapshot_tx}
+    SignedTx.sign_tx(data, priv_key)
   end
 
-  def snapshot(%ChannelStatePeer{fsm_state: state}, _fee, _nonce, _priv_key) do
+  def snapshot(
+        %ChannelStatePeer{
+          fsm_state: state
+        },
+        _,
+        _,
+        _
+      )
+      when state in [:awaiting_full_tx, :awaiting_tx_confirmed, :open] do
+    {:error, "#{__MODULE__}: We can only snapshot with ChannelOffchainTx."}
+  end
+
+  def snapshot(%ChannelStatePeer{fsm_state: state}, _, _, _) do
     {:error, "#{__MODULE__}: Invalid peer state: #{state}"}
   end
 

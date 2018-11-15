@@ -349,7 +349,7 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Submits a snapshot of the most recent state
   """
-  @spec snapshot(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
+  @spec snapshot(binary(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           :ok | error()
   def snapshot(channel_id, fee, nonce, priv_key)
       when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
