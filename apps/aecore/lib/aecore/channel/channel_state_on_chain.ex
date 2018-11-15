@@ -147,6 +147,31 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     {initiator_pubkey, responder_pubkey}
   end
 
+  @spec is_peer?(ChannelStateOnChain.t(), Keys.pubkey()) :: boolean()
+  def is_peer?(
+        %ChannelStateOnChain{
+          initiator_pubkey: initiator_pubkey,
+          responder_pubkey: responder_pubkey
+        },
+        pubkey
+      )
+      when is_binary(pubkey) do
+    pubkey in [initiator_pubkey, responder_pubkey]
+  end
+
+  @spec is_peer_or_delegate?(ChannelStateOnChain.t(), Keys.pubkey()) :: boolean()
+  def is_peer_or_delegate?(
+        %ChannelStateOnChain{
+          initiator_pubkey: initiator_pubkey,
+          responder_pubkey: responder_pubkey,
+          delegates: delegates
+        },
+        pubkey
+      )
+      when is_binary(pubkey) do
+    pubkey in [initiator_pubkey, responder_pubkey | delegates]
+  end
+
   @doc """
   Returns true if the channel wasn't slashed. (Closed channels should be removed from the Channels state tree)
   """

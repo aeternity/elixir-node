@@ -1,19 +1,15 @@
 defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   @moduledoc """
-  Aecore structure of ChannelSnapshotSoloTx transaction data.
+  Module defining the ChannelSnapshotSoloTx transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
+
   alias Aecore.Channel.Tx.ChannelSnapshotSoloTx
-  alias Aecore.Channel.ChannelStateOffChain
-  alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.ChannelStateTree
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelOffChainTx, ChannelStateTree}
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
-  alias Aeutil.Serialization
-  alias MerklePatriciaTree.Trie
 
   require Logger
 
@@ -22,7 +18,7 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   @typedoc "Expected structure for the ChannelSnapshotSolo Transaction"
   @type payload :: %{
           channel_id: binary(),
-          state: map()
+          offchain_tx: map()
         }
 
   @typedoc "Reason for the error"
@@ -33,50 +29,57 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
 
   @typedoc "Structure of the ChannelSnapshotSolo Transaction type"
   @type t :: %ChannelSnapshotSoloTx{
-          state: ChannelStateOffChain.t()
+          channel_id: binary(),
+          offchain_tx: ChannelOffChainTx.t()
         }
 
   @doc """
   Definition of Aecore ChannelSnapshotSoloTx structure
 
   ## Parameters
-  - state - the snapshoted state
+  - channel_id - the id of the channel for which the transaction is designated
+  - offchain_tx - off chain transaction mutually signed by both parties of the channel
   """
-  defstruct [:state]
+  defstruct [:channel_id, :offchain_tx]
   use ExConstructor
 
   @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
-  @spec init(payload()) :: SpendTx.t()
-  def init(%{state: state} = _payload) do
-    %ChannelSnapshotSoloTx{state: ChannelStateOffChain.init(state)}
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
+  @spec init(payload()) :: ChannelSnapshotSoloTx.t()
+  def init(%{channel_id: channel_id, offchain_tx: offchain_tx} = _payload) do
+    %ChannelSnapshotSoloTx{channel_id: channel_id, offchain_tx: offchain_tx}
   end
 
   @doc """
-  Creates the transaction from a channel offchain state
-  """
-  @spec create(ChannelStateOffChain.t()) :: ChannelSnapshotSoloTx.t()
-  def create(%ChannelStateOffChain{} = state) do
-    %ChannelSnapshotSoloTx{state: state}
-  end
-
-  @doc """
-  Checks transactions internal contents validity
+  Validates the transaction without considering state
   """
   @spec validate(ChannelSnapshotSoloTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
-        %ChannelSnapshotSoloTx{state: %ChannelStateOffChain{sequence: sequence}},
-        %DataTx{} = data_tx
+        %ChannelSnapshotSoloTx{
+          channel_id: internal_channel_id,
+          offchain_tx: %ChannelOffChainTx{channel_id: offchain_tx_channel_id, sequence: sequence}
+        },
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
-      length(senders) != 1 ->
-        {:error, "#{__MODULE__}: Invalid senders size"}
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
 
-      sequence == 0 ->
-        {:error, "#{__MODULE__}: Can't snapshot with initial state"}
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
+
+      sequence <= 0 ->
+        {:error, "#{__MODULE__}: Sequence has to be positive"}
+
+      internal_channel_id !== offchain_tx_channel_id ->
+        {:error,
+         "#{__MODULE__}: OffChainTx channel id mismatch, expected #{inspect(internal_channel_id)}, got #{
+           inspect(offchain_tx_channel_id)
+         }"}
 
       true ->
         :ok
@@ -87,53 +90,51 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   Snapshots a channel.
   """
   @spec process_chainstate(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSnapshotSoloTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
-        %Trie{} = accounts,
-        %Trie{} = channels,
+        accounts,
+        channels,
         _block_height,
         %ChannelSnapshotSoloTx{
-          state:
-            %ChannelStateOffChain{
-              channel_id: channel_id
-            } = state
+          channel_id: channel_id,
+          offchain_tx: offchain_tx
         },
-        %DataTx{}
+        _data_tx,
+        _context
       ) do
     new_channels =
       ChannelStateTree.update!(channels, channel_id, fn channel ->
-        ChannelStateOnChain.apply_snapshot(channel, state)
+        ChannelStateOnChain.apply_snapshot(channel, offchain_tx)
       end)
 
     {:ok, {accounts, new_channels}}
   end
 
   @doc """
-  Checks whether all the data is valid according to the ChannelSnapshotTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSnapshotSoloTx.t(),
-          DataTx.t()
-        ) :: :ok | {:error, String.t()}
+          DataTx.t(),
+          Transaction.context()
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
-        %Trie{} = accounts,
-        %Trie{} = channels,
+        accounts,
+        channels,
         _block_height,
-        %ChannelSnapshotSoloTx{state: %ChannelStateOffChain{channel_id: channel_id} = state},
-        %DataTx{} = data_tx
+        %ChannelSnapshotSoloTx{channel_id: channel_id, offchain_tx: offchain_tx},
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
+        _context
       ) do
-    sender = DataTx.main_sender(data_tx)
-    fee = DataTx.fee(data_tx)
-
     channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
@@ -146,8 +147,14 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
       !ChannelStateOnChain.active?(channel) ->
         {:error, "#{__MODULE__}: Can't submit snapshot when channel is closing (use slash)"}
 
+      !ChannelStateOnChain.is_peer_or_delegate?(channel, sender) ->
+        {:error,
+         "#{__MODULE__}: Sender #{sender} is not a peer or delegate of the channel, peers are: #{
+           channel.initiator_pubkey
+         } and #{channel.responder_pubkey}, delegates are: #{channel.delegates} "}
+
       true ->
-        ChannelStateOnChain.validate_snapshot(channel, state)
+        ChannelStateOnChain.validate_snapshot(channel, offchain_tx)
     end
   end
 
@@ -157,51 +164,58 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
           ChannelSnapshotSoloTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: Chainstate.account()
-  def deduct_fee(
-        %Trie{} = accounts,
-        block_height,
-        %ChannelSnapshotSoloTx{},
-        %DataTx{} = data_tx,
-        fee
-      ) do
+        ) :: Chainstate.accounts()
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(%SignedTx{} = tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
-  @spec encode_to_list(ChannelSnapshotSoloTx.t(), DataTx.t()) :: list
-  def encode_to_list(%ChannelSnapshotSoloTx{} = tx, %DataTx{} = data_tx) do
-    [
-      @version,
-      Identifier.encode_list_to_binary(data_tx.senders),
-      data_tx.nonce,
-      ChannelStateOffChain.encode_to_list(tx.state),
-      data_tx.fee,
-      data_tx.ttl
-    ]
+  @spec encode_to_list(ChannelSnapshotSoloTx.t(), DataTx.t()) :: list() | {:error, String.t()}
+  def encode_to_list(%ChannelSnapshotSoloTx{} = tx, %DataTx{senders: [sender]} = data_tx) do
+    case ChannelOffChainTx.rlp_encode(tx.offchain_tx) do
+      offchain_tx_encoded when is_binary(offchain_tx_encoded) ->
+        [
+          :binary.encode_unsigned(@version),
+          Identifier.create_encoded_to_binary(tx.channel_id, :channel),
+          Identifier.encode_to_binary(sender),
+          offchain_tx_encoded,
+          :binary.encode_unsigned(data_tx.ttl),
+          :binary.encode_unsigned(data_tx.fee),
+          :binary.encode_unsigned(data_tx.nonce)
+        ]
+
+      {:error, _} = err ->
+        err
+    end
   end
 
-  @spec decode_from_list(non_neg_integer(), list(binary() | list(binary()))) :: DataTx.t()
-  def decode_from_list(@version, [encoded_senders, nonce, [state_ver_bin | state], fee, ttl]) do
-    state_ver = Serialization.transform_item(state_ver_bin, :int)
-
-    case ChannelStateOffChain.decode_from_list(state_ver, state) do
-      {:ok, state} ->
-        payload = %ChannelSnapshotSoloTx{state: state}
-
-        DataTx.init_binary(
-          ChannelSnapshotSoloTx,
-          payload,
-          encoded_senders,
-          fee,
-          nonce,
-          ttl
-        )
-
+  def decode_from_list(@version, [
+        encoded_channel_id,
+        encoded_sender,
+        payload,
+        ttl,
+        fee,
+        nonce
+      ]) do
+    with {:ok, channel_id} <-
+           Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
+         {:ok, offchain_tx} <- ChannelOffChainTx.rlp_decode_signed(payload) do
+      DataTx.init_binary(
+        ChannelSnapshotSoloTx,
+        %{
+          channel_id: channel_id,
+          offchain_tx: offchain_tx
+        },
+        [encoded_sender],
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
+      )
+    else
       {:error, _} = error ->
         error
     end
