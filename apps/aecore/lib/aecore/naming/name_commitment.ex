@@ -81,14 +81,18 @@ defmodule Aecore.Naming.NameCommitment do
   @spec decode_from_list(non_neg_integer(), list()) ::
           {:ok, NameCommitment.t()} | {:error, reason()}
   def decode_from_list(@version, [encoded_owner, created, expires]) do
-    {:ok, decoded_owner} = Identifier.decode_from_binary(encoded_owner)
+    case Identifier.decode_from_binary_to_value(encoded_owner, :account) do
+      {:ok, decoded_owner} ->
+        {:ok,
+         %NameCommitment{
+           owner: decoded_owner,
+           created: :binary.decode_unsigned(created),
+           expires: :binary.decode_unsigned(expires)
+         }}
 
-    {:ok,
-     %NameCommitment{
-       owner: decoded_owner.value,
-       created: :binary.decode_unsigned(created),
-       expires: :binary.decode_unsigned(expires)
-     }}
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   def decode_from_list(@version, data) do

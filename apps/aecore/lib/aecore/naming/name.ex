@@ -101,16 +101,20 @@ defmodule Aecore.Naming.Name do
 
   @spec decode_from_list(integer(), list()) :: {:ok, Name.t()} | {:error, reason()}
   def decode_from_list(@version, [owner, expires, status, client_ttl, pointers]) do
-    {:ok, decoded_owner} = Identifier.decode_from_binary(owner)
+    case Identifier.decode_from_binary_to_value(owner, :account) do
+      {:ok, decoded_owner} ->
+        {:ok,
+         %Name{
+           owner: decoded_owner,
+           expires: :binary.decode_unsigned(expires),
+           status: String.to_atom(status),
+           client_ttl: :binary.decode_unsigned(client_ttl),
+           pointers: pointers
+         }}
 
-    {:ok,
-     %Name{
-       owner: decoded_owner.value,
-       expires: :binary.decode_unsigned(expires),
-       status: String.to_atom(status),
-       client_ttl: :binary.decode_unsigned(client_ttl),
-       pointers: pointers
-     }}
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   def decode_from_list(@version, data) do
