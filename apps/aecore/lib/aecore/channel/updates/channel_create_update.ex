@@ -45,6 +45,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
     :initiator_amount,
     :responder,
     :responder_amount,
+    :delegates,
     :channel_reserve,
     :locktime
   ]
@@ -57,6 +58,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
         %ChannelCreateTx{
           initiator_amount: initiator_amount,
           responder_amount: responder_amount,
+          delegates: delegates,
           channel_reserve: channel_reserve,
           locktime: locktime
         },
@@ -69,6 +71,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
       initiator_amount: initiator_amount,
       responder: responder,
       responder_amount: responder_amount,
+      delegates: delegates,
       channel_reserve: channel_reserve,
       locktime: locktime
     }
@@ -146,6 +149,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
           initiator_amount: initiator_amount,
           responder: responder,
           responder_amount: responder_amount,
+          delegates: delegates,
           channel_reserve: channel_reserve,
           locktime: locktime
         },
@@ -154,6 +158,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
           responder_amount: correct_responder_amount,
           foreign_pubkey: correct_initiator,
           initiator_amount: correct_initiator_amount,
+          delegates: correct_delegates,
           channel_reserve: correct_channel_reserve,
           locktime: correct_locktime
         }
@@ -185,6 +190,10 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
          "#{__MODULE__}: Wrong responder amount, expected #{correct_responder_amount}, got #{
            responder_amount
          }"}
+
+      delegates != correct_delegates ->
+        {:error,
+         "#{__MODULE__}: Wrong delegates, expected #{correct_delegates}, got #{delegates}"}
 
       channel_reserve != correct_channel_reserve ->
         {:error,
