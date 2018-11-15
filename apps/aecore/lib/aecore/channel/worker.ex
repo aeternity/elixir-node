@@ -67,6 +67,11 @@ defmodule Aecore.Channel.Worker do
     closed(tx)
   end
 
+  def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelSnapshotSoloTx}} = _tx) do
+    # ChannelSnapshotSoloTx requires no action
+    :ok
+  end
+
   def new_tx_mined(%SignedTx{}) do
     # We don't care about this tx
     :ok
@@ -339,6 +344,16 @@ defmodule Aecore.Channel.Worker do
   @spec settled(SignedTx.t()) :: :ok | error()
   def settled(%SignedTx{} = settle_tx) do
     GenServer.call(__MODULE__, {:settled, settle_tx})
+  end
+
+  @doc """
+  Submits a snapshot of the most recent state
+  """
+  @spec snapshot(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
+          :ok | error()
+  def snapshot(channel_id, fee, nonce, priv_key)
+      when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
+      GenServer.call(__MODULE__, {:snapshot, channel_id, fee, nonce, priv_key})
   end
 
   @doc """
@@ -651,6 +666,25 @@ defmodule Aecore.Channel.Worker do
       end
     else
       {:reply, {:error, "#{__MODULE__}: Unknown channel"}, state}
+    end
+  end
+
+  @doc """
+    Submits a snapshot of the most recent state of a channel
+  """
+  def handle_call({:snapshot, channel_id, fee, nonce, priv_key}, _from, state) do
+    peer_state = Map.get(state, channel_id)
+
+    with {:ok, tx} <-
+      ChannelStatePeer.snapshot(peer_state, fee, nonce, priv_key),
+         :ok <- Pool.add_transaction(tx) do
+        {:reply, :ok, state}
+      else
+      {:error, _} = err ->
+        {:reply, err, state}
+
+      :error ->
+        {:reply, {:error, "#{__MODULE__}: Pool error"}, state}
     end
   end
 
