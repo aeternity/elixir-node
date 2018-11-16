@@ -169,6 +169,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       ChannelStateOnChain.create(
         initiator_pubkey,
         responder_pubkey,
+        [],
         initiator_amount,
         responder_amount,
         locktime,

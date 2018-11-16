@@ -84,6 +84,7 @@ defmodule AecoreChannelCompatibilityTest do
 
   @tag :channels
   @tag :compatibility
+  @tag :disabled
   test "Id compatibility test", ctx do
     epoch_id =
       <<241, 22, 174, 6, 3, 175, 147, 100, 202, 226, 36, 81, 132, 3, 60, 40, 171, 173, 182, 207,
@@ -100,6 +101,7 @@ defmodule AecoreChannelCompatibilityTest do
 
   @tag :channels
   @tag :compatibility
+  @tag :disabled
   test "CreateTx compatibility test", ctx do
     epoch_create_tx =
       <<248, 111, 50, 1, 161, 1, 195, 127, 140, 188, 222, 21, 148, 121, 3, 245, 220, 105, 162,
@@ -138,6 +140,7 @@ defmodule AecoreChannelCompatibilityTest do
 
   @tag :channels
   @tag :compatibility
+  @tag :disabled
   test "MutalCloseTx compatibility test" do
     epoch_mutal_close_tx =
       <<234, 53, 1, 161, 6, 241, 22, 174, 6, 3, 175, 147, 100, 202, 226, 36, 81, 132, 3, 60, 40,
@@ -171,6 +174,7 @@ defmodule AecoreChannelCompatibilityTest do
 
   @tag :channels
   @tag :compatibility
+  @tag :disabled
   test "ChannelSettleTx compatibility test", ctx do
     epoch_settle_tx =
       <<248, 76, 56, 1, 161, 6, 241, 22, 174, 6, 3, 175, 147, 100, 202, 226, 36, 81, 132, 3, 60,
@@ -201,6 +205,7 @@ defmodule AecoreChannelCompatibilityTest do
 
   @tag :channels
   @tag :compatibility
+  @tag :disabled
   test "Full compatibility test (create, 2xtransfer, mutal close)", ctx do
     # create
     initiator_amount = 100
@@ -309,6 +314,7 @@ defmodule AecoreChannelCompatibilityTest do
 
   @tag :channels
   @tag :compatibility
+  @tag :disabled
   test "Blocks compatiblity (create, mutal close after transfer)" do
     blocks =
       Enum.reverse([
@@ -343,6 +349,7 @@ defmodule AecoreChannelCompatibilityTest do
 
   @tag :channels
   @tag :compatibility
+  @tag :disabled
   test "Blocks compatibility (create, transfer, partial transfer, solo with old, slash, settle)" do
     blocks =
       Enum.reverse([

@@ -45,6 +45,15 @@ defmodule Aecore.Chain.Identifier do
     |> encode_to_binary()
   end
 
+  @spec create_encoded_to_binary_list(list(value()), type()) :: list(binary())
+  def create_encoded_to_binary_list([value | rest], type) do
+    [create_encoded_to_binary(value, type) | create_encoded_to_binary_list(rest, type)]
+  end
+
+  def create_encoded_to_binary_list([], _) do
+    []
+  end
+
   # API needed for RLP
   @spec encode_to_binary(Identifier.t()) :: binary()
   def encode_to_binary(%Identifier{value: value, type: type}) do
@@ -64,7 +73,7 @@ defmodule Aecore.Chain.Identifier do
     end
   end
 
-  @spec decode_from_binary_to_value(binary(), type()) :: value() | {:error, String.t()}
+  @spec decode_from_binary_to_value(binary(), type()) :: {:ok, value()} | {:error, String.t()}
   def decode_from_binary_to_value(data, type) do
     case decode_from_binary(data) do
       {:ok, %Identifier{type: ^type, value: value}} ->
@@ -76,6 +85,22 @@ defmodule Aecore.Chain.Identifier do
       {:error, _} = error ->
         error
     end
+  end
+
+  @spec decode_from_binary_list_to_value_list(list(binary()), type()) ::
+          {:ok, list(value())} | {:error, String.t()}
+  def decode_from_binary_list_to_value_list([encoded_identifier | rest], type) do
+    with {:ok, value} <- decode_from_binary_to_value(encoded_identifier, type),
+         {:ok, rest_values} <- decode_from_binary_list_to_value_list(rest, type) do
+      {:ok, [value | rest_values]}
+    else
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  def decode_from_binary_list_to_value_list([], _) do
+    {:ok, []}
   end
 
   @spec encode_list_to_binary(list(t())) :: list(binary())
