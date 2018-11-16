@@ -47,7 +47,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   # Parameters
   - initiator_pubkey
   - responder_pubkey
-  - delegates - list of delegates alowed to perform certain operations
+  - delegates - list of delegates allowed to perform certain operations
   - total_amount - the total amount of tokens in the channel
   - initiator_amount - amount deposited by initiator in create_tx or from poi
   - responder_amount - amount deposited by responder in create_tx or from poi
@@ -464,15 +464,13 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         %ChannelStateOnChain{} = channel,
         %ChannelOffChainTx{} = offchain_tx
       ) do
-    cond do
-      channel.sequence >= offchain_tx.sequence ->
-        {:error,
-         "#{__MODULE__}: OffChainTx is too old, expected newer than #{channel.sequence}, got #{
-           offchain_tx.sequence
-         }"}
-
-      true ->
-        ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
+    if channel.sequence < offchain_tx.sequence do
+      ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
+    else
+      {:error,
+       "#{__MODULE__}: OffChainTx is too old, expected newer than #{channel.sequence}, got #{
+         offchain_tx.sequence
+       }"}
     end
   end
 

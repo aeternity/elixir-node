@@ -1041,7 +1041,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Handles mined ChnanelSlashTx and ChannelCloseSoloTx. Provided fee and nonce are for potentially created SlashTx. Pubkey and Privkey don't have to match any of channel parties. Returns altered ChannelPeerState and ChannelSlashTx if we have higher signed state.
+  Handles mined ChannelSlashTx and ChannelCloseSoloTx. Provided fee and nonce are for potentially created SlashTx. Pubkey and Privkey don't have to match any of channel parties. Returns altered ChannelPeerState and ChannelSlashTx if we have higher signed state.
   """
   @spec slashed(
           ChannelStatePeer.t(),
@@ -1121,7 +1121,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         _
       )
       when state in [:awaiting_full_tx, :awaiting_tx_confirmed, :open] do
-    {:error, "#{__MODULE__}: We can only snapshot with ChannelOffchainTx."}
+    {:error, "#{__MODULE__}: We can only snapshot with ChannelOffChainTx."}
   end
 
   def snapshot(%ChannelStatePeer{fsm_state: state}, _, _, _) do
