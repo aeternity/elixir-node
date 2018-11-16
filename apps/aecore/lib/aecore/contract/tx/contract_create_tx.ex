@@ -10,6 +10,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Contract.{Contract, Call, CallStateTree, ContractStateTree, Dispatch}
+  alias Aecore.Contract.Sophia.{SophiaWrappedCode, SophiaData, SophiaAbi}
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Tx.{DataTx, Transaction}
   require Aecore.Contract.ContractConstants, as: Constants
@@ -178,12 +179,25 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
               Account.apply_transfer!(acc, block_height, (gas_cost + deposit) * -1)
             end)
 
-          updated_store = ContractStateTree.get(updated_state.contracts, contract.id.value).store
-          updated_contract = %{contract | code: call_result.return_value, store: updated_store}
+          updated_contract =
+            case vm_version do
+              Constants.aevm_sophia_01() ->
+                # updated_store = call_result.return_value
+                # TODO: extract Sophia state from return value and save it in contract state
+                contract
+
+              Constants.aevm_solidity_01() ->
+                updated_store =
+                  ContractStateTree.get(updated_state.contracts, contract.id.value).store
+
+                %{contract | code: call_result.return_value, store: updated_store}
+            end
+
+          cleared_call_result = %{call_result | return_value: <<>>}
 
           chain_state_with_call = %{
             updated_state
-            | calls: CallStateTree.insert_call(updated_state.calls, call_result),
+            | calls: CallStateTree.insert_call(updated_state.calls, cleared_call_result),
               accounts: accounts_after_gas_spent,
               contracts:
                 ContractStateTree.enter_contract(updated_state.contracts, updated_contract)
@@ -220,10 +234,13 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
         _chainstate,
         _block_height,
         %ContractCreateTx{
-          amount: amount,
+          code: code,
+          vm_version: vm_version,
           deposit: deposit,
+          amount: amount,
           gas: gas,
-          gas_price: gas_price
+          gas_price: gas_price,
+          call_data: call_data
         },
         %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
         _context
@@ -233,7 +250,27 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     if AccountStateTree.get(accounts, sender).balance - total_deduction < 0 do
       {:error, "#{__MODULE__}: Negative balance"}
     else
-      :ok
+      case vm_version do
+        Constants.aevm_sophia_01() ->
+          case Serialization.rlp_decode_only(code, SophiaWrappedCode) do
+            {:ok, %SophiaWrappedCode{type_info: type_info}} ->
+              function_hash = SophiaData.get_function_hash_from_call_data(call_data)
+
+              case SophiaAbi.get_function_name_from_type_info(function_hash, type_info) do
+                {:ok, Constants.sophia_init_function()} ->
+                  :ok
+
+                {:error, _} ->
+                  {:error, "#{__MODULE__}: Bad init function"}
+              end
+
+            {:error, message} ->
+              {:error, "#{__MODULE__}: #{message}"}
+          end
+
+        Constants.aevm_solidity_01() ->
+          :ok
+      end
     end
   end
 

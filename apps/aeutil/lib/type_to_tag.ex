@@ -41,6 +41,7 @@ defmodule Aeutil.TypeToTag do
   def tag_to_type(58), do: {:ok, Aecore.Channel.ChannelStateOnChain}
   # Channel snapshot transaction - 59
   def tag_to_type(60), do: {:ok, Aecore.Poi.Poi}
+  def tag_to_type(70), do: {:ok, Aecore.Contract.Sophia.SophiaWrappedCode}
   # Non Epoch tags:
   def tag_to_type(100), do: {:ok, Aecore.Chain.Block}
   def tag_to_type(tag), do: {:error, "#{__MODULE__}: Unknown tag: #{inspect(tag)}"}
@@ -83,6 +84,7 @@ defmodule Aeutil.TypeToTag do
   def type_to_tag(Aecore.Channel.ChannelStateOnChain), do: {:ok, 58}
   # Channel snapshot transaction - 59
   def type_to_tag(Aecore.Poi.Poi), do: {:ok, 60}
+  def type_to_tag(Aecore.Contract.Sophia.SophiaWrappedCode), do: {:ok, 70}
   # Non Epoch tags
   def type_to_tag(Aecore.Chain.Block), do: {:ok, 100}
   def type_to_tag(type), do: {:error, "#{__MODULE__}: Non serializable type: #{type}"}

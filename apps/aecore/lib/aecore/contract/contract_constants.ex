@@ -13,4 +13,8 @@ defmodule Aecore.Contract.ContractConstants do
   defmacro aevm_solidity_01 do
     quote do: 2
   end
+
+  defmacro sophia_init_function do
+    <<"init">>
+  end
 end
