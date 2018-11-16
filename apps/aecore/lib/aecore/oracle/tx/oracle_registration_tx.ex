@@ -78,7 +78,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         %OracleRegistrationTx{
           query_format: query_format,
           response_format: response_format,
-          ttl: ttl
+          ttl: ttl,
+          vm_version: vm_version
         },
         %DataTx{senders: senders}
       ) do
@@ -91,6 +92,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
+
+      Oracle.check_vm_version(vm_version) != :ok ->
+        {:error, "#{__MODULE__}:  Bad VM version: #{inspect(vm_version)}"}
 
       true ->
         :ok
@@ -155,7 +159,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         accounts,
         oracles,
         block_height,
-        %OracleRegistrationTx{ttl: ttl, vm_version: vm_version} = tx,
+        %OracleRegistrationTx{ttl: ttl} = tx,
         %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
         _context
       ) do
@@ -168,9 +172,6 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
       OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
-
-      Oracle.check_vm_version(vm_version) != :ok ->
-        {:error, "#{__MODULE__}:  Bad VM version: #{inspect(vm_version)}"}
 
       true ->
         :ok
