@@ -7,7 +7,6 @@ defmodule Aecore.Miner.Worker do
   use GenServer
 
   alias Aecore.Chain.{
-    Genesis,
     MicroBlock,
     MicroHeader,
     KeyBlock,

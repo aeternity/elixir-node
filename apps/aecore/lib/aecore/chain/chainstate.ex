@@ -4,11 +4,10 @@ defmodule Aecore.Chain.Chainstate do
   """
 
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.{Chainstate, Genesis, KeyBlock, MicroBlock, KeyHeader, MicroHeader}
+  alias Aecore.Chain.{Chainstate, Genesis, KeyBlock, MicroBlock, KeyHeader}
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Contract.{Call, CallStateTree, ContractStateTree}
   alias Aecore.Governance.{GenesisConstants, GovernanceConstants}
-  alias Aecore.Keys
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Naming.NamingStateTree
   alias Aecore.Oracle.{Oracle, OracleStateTree}
@@ -71,7 +70,7 @@ defmodule Aecore.Chain.Chainstate do
 
     updated_chainstate =
       case block do
-        %KeyBlock{header: %KeyHeader{}} ->
+        %KeyBlock{} ->
           chainstate_with_pruned_calls
 
         %MicroBlock{txs: txs} ->

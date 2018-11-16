@@ -3,7 +3,6 @@ defmodule Aecore.Chain.MicroHeader do
   Module defining the MicroHeader structure
   """
   alias Aecore.Chain.MicroHeader
-  alias Aeutil.Hash
 
   @tag 0
   @tag_size 1
@@ -42,26 +41,17 @@ defmodule Aecore.Chain.MicroHeader do
     :signature
   ]
 
-  @spec hash(MicroHeader.t()) :: binary()
-  def hash(%MicroHeader{} = header) do
-    header
-    |> encode_to_binary()
-    |> Hash.hash()
-  end
-
   @spec encode_to_binary(MicroHeader.t()) :: binary()
-  def encode_to_binary(
-        %MicroHeader{
-          height: height,
-          prev_hash: prev_hash,
-          prev_key_hash: prev_key_hash,
-          txs_hash: txs_hash,
-          root_hash: root_hash,
-          time: time,
-          version: version,
-          signature: signature
-        } = header
-      ) do
+  def encode_to_binary(%MicroHeader{
+        height: height,
+        prev_hash: prev_hash,
+        prev_key_hash: prev_key_hash,
+        txs_hash: txs_hash,
+        root_hash: root_hash,
+        time: time,
+        version: version,
+        signature: signature
+      }) do
     flags = flags()
     flags_byte_size = trunc((@tag_size + @unused_flags_size) / 8)
 

@@ -263,7 +263,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec add_validated_block(Block.t(), Chainstate.t(), boolean()) :: :ok
+  @spec add_validated_block(KeyBlock.t() | MicroBlock.t(), Chainstate.t(), boolean()) :: :ok
   defp add_validated_block(block, chain_state, loop_micro_block) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state, loop_micro_block})
   end

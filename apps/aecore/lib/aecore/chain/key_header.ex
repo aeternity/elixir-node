@@ -4,7 +4,6 @@ defmodule Aecore.Chain.KeyHeader do
   """
   alias Aecore.Chain.KeyHeader
   alias Aecore.Keys
-  alias Aeutil.Hash
 
   @tag 1
   @tag_size 1
@@ -53,13 +52,6 @@ defmodule Aecore.Chain.KeyHeader do
   ]
 
   use ExConstructor
-
-  @spec hash(KeyHeader.t()) :: binary()
-  def hash(%KeyHeader{} = header) do
-    header
-    |> encode_to_binary()
-    |> Hash.hash()
-  end
 
   @spec encode_to_binary(KeyHeader.t()) :: binary()
   def encode_to_binary(

@@ -4,25 +4,25 @@ defmodule Aecore.Util.Header do
   """
   alias Aecore.Chain.KeyHeader
   alias Aecore.Chain.MicroHeader
+  alias Aeutil.Hash
 
   @spec hash(KeyHeader.t() | MicroHeader.t()) :: binary()
-  def hash(header) do
-    case header do
-      %KeyHeader{} ->
-        KeyHeader.hash(header)
-
-      %MicroHeader{} ->
-        MicroHeader.hash(header)
-    end
+  def hash(%KeyHeader{} = header) do
+    binary = KeyHeader.encode_to_binary(header)
+    Hash.hash(binary)
   end
 
-  def top_key_block_hash(prev_header) do
-    case prev_header do
-      %KeyHeader{} ->
-        hash(prev_header)
+  def hash(%MicroHeader{} = header) do
+    binary = MicroHeader.encode_to_binary(header)
+    Hash.hash(binary)
+  end
 
-      %MicroHeader{prev_key_hash: prev_key_hash} ->
-        prev_key_hash
-    end
+  @spec top_key_block_hash(KeyHeader.t() | MicroHeader.t()) :: binary()
+  def top_key_block_hash(%KeyHeader{} = header) do
+    hash(header)
+  end
+
+  def top_key_block_hash(%MicroHeader{prev_key_hash: prev_key_hash}) do
+    prev_key_hash
   end
 end
