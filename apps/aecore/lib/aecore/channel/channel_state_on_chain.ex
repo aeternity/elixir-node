@@ -47,7 +47,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   # Parameters
   - initiator_pubkey
   - responder_pubkey
-  - delegates - list of delegates alowed to perform certain operations
+  - delegates - list of delegates allowed to perform certain operations
   - total_amount - the total amount of tokens in the channel
   - initiator_amount - amount deposited by initiator in create_tx or from poi
   - responder_amount - amount deposited by responder in create_tx or from poi

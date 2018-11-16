@@ -10,7 +10,7 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   alias Aecore.Channel.{ChannelStateOnChain, ChannelOffChainTx, ChannelStateTree}
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Identifier, Chainstate}
 
   require Logger
 
