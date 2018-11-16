@@ -16,12 +16,12 @@ defmodule Aecore.Tx.Transaction do
         false
       end
 
-      @spec gas :: non_neg_integer()
-      def gas do
-        GovernanceConstants.block_gas_limit()
+      @spec gas_price :: non_neg_integer()
+      def gas_price do
+        GovernanceConstants.tx_base_gas(__MODULE__)
       end
 
-      defoverridable chainstate_senders?: 0, gas: 0
+      defoverridable chainstate_senders?: 0
     end
   end
 

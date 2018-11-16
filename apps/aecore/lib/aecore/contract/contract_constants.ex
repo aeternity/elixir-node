@@ -13,12 +13,4 @@ defmodule Aecore.Contract.ContractConstants do
   defmacro aevm_solidity_01 do
     quote do: 2
   end
-
-  defmacro call_gas_price_multiplier do
-    quote do: 30
-  end
-
-  defmacro create_tx_gas_price_multiplier do
-    quote do: 5
-  end
 end

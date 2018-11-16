@@ -2,6 +2,8 @@ defmodule Aecore.Governance.GovernanceConstants do
   @moduledoc """
   Module containing governance constants
   """
+  alias Aecore.Contract.Tx.ContractCallTx
+  alias Aecore.Contract.Tx.ContractCreateTx
 
   @number_of_blocks_for_target_recalculation 10
 
@@ -42,6 +44,31 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @max_txs_per_block 10_946
 
+  @default_tx_gas_price 15_000
+
+  @allowed_txs_types [
+    Aecore.Account.Tx.SpendTx,
+    Aecore.Channel.Tx.ChannelCloseMutualTx,
+    Aecore.Channel.Tx.ChannelCloseSoloTx,
+    Aecore.Channel.Tx.ChannelCreateTx,
+    Aecore.Channel.Tx.ChannelDepositTx,
+    Aecore.Channel.Tx.ChannelSettleTx,
+    Aecore.Channel.Tx.ChannelSlashTx,
+    Aecore.Channel.Tx.ChannelWithdrawTx,
+    Aecore.Contract.Tx.ContractCallTx,
+    Aecore.Contract.Tx.ContractCreateTx,
+    Aecore.Naming.Tx.NameClaimTx,
+    Aecore.Naming.Tx.NamePreClaimTx,
+    Aecore.Naming.Tx.NameRevokeTx,
+    Aecore.Naming.Tx.NameTransferTx,
+    Aecore.Naming.Tx.NameUpdateTx,
+    Aecore.Oracle.Tx.OracleExtendTx,
+    Aecore.Oracle.Tx.OracleQueryTx,
+    Aecore.Oracle.Tx.OracleRegistrationTx,
+    Aecore.Oracle.Tx.OracleResponseTx
+  ]
+  @contract_call_tx_gas_price_multiplier 30
+  @contract_create_tx_gas_price_multiplier 5
   # getter functions with same name for use in other modules
 
   @spec number_of_blocks_for_target_recalculation :: non_neg_integer()
@@ -101,5 +128,22 @@ defmodule Aecore.Governance.GovernanceConstants do
   @spec max_txs_per_block :: non_neg_integer()
   def max_txs_per_block, do: @max_txs_per_block
 
+  @spec block_gas_limit :: non_neg_integer()
   def block_gas_limit, do: @block_gas_limit
+
+  @spec default_tx_gas_price :: non_neg_integer()
+  def default_tx_gas_price, do: @default_tx_gas_price
+
+  @spec tx_base_gas(atom()) :: non_neg_integer()
+  def tx_base_gas(type) when type in @allowed_txs_types do
+    case type do
+      ContractCallTx -> @contract_call_tx_gas_price_multiplier * default_tx_gas_price()
+      ContractCreateTx -> @contract_create_tx_gas_price_multiplier * default_tx_gas_price()
+      _ -> default_tx_gas_price()
+    end
+  end
+
+  def tx_base_gas(_) do
+    block_gas_limit()
+  end
 end

@@ -254,11 +254,6 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec gas :: non_neg_integer()
-  def gas do
-    Constants.call_gas_price_multiplier() * GovernanceConstants.block_gas_limit()
-  end
-
   @spec encode_to_list(ContractCallTx.t(), DataTx.t()) :: list()
   def encode_to_list(
         %ContractCallTx{
