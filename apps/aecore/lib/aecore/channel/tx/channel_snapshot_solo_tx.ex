@@ -184,21 +184,15 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
 
   @spec encode_to_list(ChannelSnapshotSoloTx.t(), DataTx.t()) :: list() | {:error, String.t()}
   def encode_to_list(%ChannelSnapshotSoloTx{} = tx, %DataTx{senders: [sender]} = data_tx) do
-    case ChannelOffChainTx.rlp_encode(tx.offchain_tx) do
-      offchain_tx_encoded when is_binary(offchain_tx_encoded) ->
-        [
-          :binary.encode_unsigned(@version),
-          Identifier.create_encoded_to_binary(tx.channel_id, :channel),
-          Identifier.encode_to_binary(sender),
-          offchain_tx_encoded,
-          :binary.encode_unsigned(data_tx.ttl),
-          :binary.encode_unsigned(data_tx.fee),
-          :binary.encode_unsigned(data_tx.nonce)
-        ]
-
-      {:error, _} = err ->
-        err
-    end
+    [
+      :binary.encode_unsigned(@version),
+      Identifier.create_encoded_to_binary(tx.channel_id, :channel),
+      Identifier.encode_to_binary(sender),
+      ChannelOffChainTx.rlp_encode(tx.offchain_tx),
+      :binary.encode_unsigned(data_tx.ttl),
+      :binary.encode_unsigned(data_tx.fee),
+      :binary.encode_unsigned(data_tx.nonce)
+    ]
   end
 
   def decode_from_list(@version, [
