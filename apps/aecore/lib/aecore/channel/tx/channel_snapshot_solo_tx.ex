@@ -5,6 +5,7 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
 
   use Aecore.Tx.Transaction
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Channel.Tx.ChannelSnapshotSoloTx
   alias Aecore.Channel.{ChannelStateOnChain, ChannelOffChainTx, ChannelStateTree}
   alias Aecore.Account.AccountStateTree

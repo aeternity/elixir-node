@@ -380,7 +380,7 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 120_000
-  test "Create channel, responder dissapears, solo close", ctx do
+  test "Create channel, responder disappears, solo close", ctx do
     id = create_channel(ctx)
 
     {:ok, _state} = call_s1({:transfer, id, 50, ctx.sk1})
@@ -416,7 +416,7 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 120_000
-  test "Slashing an active channel does not work. Solo closing an inactive channel does not work",
+  test "Slashing an active channel does not work. Solo closing an inactive channel does not work. Snapshoting an inactive channel does not work",
        ctx do
     id = create_channel(ctx)
 
@@ -426,6 +426,7 @@ defmodule AecoreChannelTest do
     assert_offchain_state(id, 100, 200, 2)
 
     solo_close_tx2 = prepare_solo_close_tx(id, &call_s2/1, 15, 2, ctx.sk2)
+    snapshot_solo_tx = prepare_snapshot(id, &call_s2/1, 15, 2, ctx.sk2)
 
     # slashing an active channel fails
     slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.sk2)
@@ -445,75 +446,59 @@ defmodule AecoreChannelTest do
 
     assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
              false
+
+    # snapshoting an inactive channel fails
+    assert_custom_tx_fails(snapshot_solo_tx)
+
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
+             false
   end
 
   @tag :channels
   @tag timeout: 120_000
-  test "create channel, transfer funds twice, submit snapshot, tries to submit a snapshot of an outdated state, mutual close",
+  test "create channel, transfer funds twice, submit snapshot, tries to solo close with an outdated state, tries to snapshot with old state, mutual close",
        ctx do
     id = create_channel(ctx)
 
-    # transfer 1
-    {:ok, state1} = call_s1({:transfer, id, 50, ctx.sk1})
-    assert :update == get_fsm_state_s1(id)
-    {:ok, signed_state1} = call_s2({:recv_state, state1, ctx.sk2})
-    assert :open == get_fsm_state_s2(id)
-    {:ok, nil} = call_s1({:recv_state, signed_state1, ctx.sk1})
-    assert :open == get_fsm_state_s1(id)
+    # Transfer 1
+    perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 100, 200, 2)
 
-    assert 100 == signed_state1.initiator_amount
-    assert 200 == signed_state1.responder_amount
-    assert 1 == signed_state1.sequence
+    # Prepare tx
+    channel_solo_close_tx = prepare_solo_close_tx(id, &call_s2/1, 5, 1, ctx.sk2)
+    channel_snapshot_solo_tx = prepare_snapshot(id, &call_s2/1, 5, 1, ctx.sk2)
 
-    # second transfer
-    {:ok, state2} = call_s2({:transfer, id, 170, ctx.sk2})
-    {:ok, signed_state2} = call_s1({:recv_state, state2, ctx.sk1})
-    {:ok, nil} = call_s2({:recv_state, signed_state2, ctx.sk2})
+    # Transfer 2
+    perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
+    assert_offchain_state(id, 270, 30, 3)
 
-    assert 270 == signed_state2.initiator_amount
-    assert 30 == signed_state2.responder_amount
-    assert 2 == signed_state2.sequence
-
-    # submits snapshot
+    # Snapshot
     :ok = call_s1({:snapshot, id, 10, 2, ctx.sk1})
     assert :open == get_fsm_state_s1(id)
     assert :open == get_fsm_state_s2(id)
 
     TestUtils.assert_transactions_mined()
 
-    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 1
     channel = ChannelStateTree.get(Chain.chain_state().channels, id)
-    assert channel.slash_sequence == 2
+    assert channel.sequence == 3
     assert ChannelStateOnChain.active?(channel) == true
+    assert {:ok, channel.state_hash} == call_s1({:calculate_state_hash, id})
 
-    # tries snapshot with outdated state
-    snapshot_data =
-      DataTx.init(
-        ChannelSnapshotSoloTx,
-        %{state: signed_state1},
-        ctx.pk2,
-        15,
-        1
-      )
+    # Check if solo close with old state fails
+    assert_custom_tx_fails(channel_solo_close_tx)
 
-    {:ok, tx} = SignedTx.sign_tx(snapshot_data, ctx.pk2, ctx.sk2)
-    assert :ok == Pool.add_transaction(tx)
+    # Check if snapshot with old state fails
+    assert_custom_tx_fails(channel_snapshot_solo_tx)
+    channel_snapshot_solo_tx2 = prepare_snapshot(id, &call_s2/1, 5, 1, ctx.sk2)
+    assert_custom_tx_fails(channel_snapshot_solo_tx2)
 
-    # snapshot fails
-    :ok = Miner.mine_sync_block_to_chain()
-    assert map_size(Pool.get_pool()) == 1
-
-    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ==
-             true
-
-    # mutual close
+    # Close channel
     {:ok, close_tx} = call_s1({:close, id, {5, 5}, 3, ctx.sk1})
-    {:ok, signed_close_tx} = call_s2({:recv_close_tx, id, close_tx, {5, 5}, ctx.sk2})
+    {:ok, signed_close_tx} = call_s2({:receive_close_tx, id, close_tx, {5, 5}, ctx.sk2})
     assert :closing == get_fsm_state_s1(id)
     assert :closing == get_fsm_state_s2(id)
 
-    :ok = Miner.mine_sync_block_to_chain()
-    assert map_size(Pool.get_pool()) == 1
+    TestUtils.assert_transactions_mined()
 
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
     TestUtils.assert_balance(ctx.pk1, 40 + 270 - 5 - 10)
@@ -523,54 +508,33 @@ defmodule AecoreChannelTest do
     call_s2({:closed, signed_close_tx})
     assert :closed == get_fsm_state_s1(id)
     assert :closed == get_fsm_state_s2(id)
+
+    assert %{} == Pool.get_and_empty_pool()
   end
 
   @tag :channels
   @tag timeout: 120_000
-  test "create channel, transfer funds, solo close, tries to submit a snapshot, settle", ctx do
+  test "create channel, transfer funds, submit snapshot, try to solo close with the most recent state",
+       ctx do
     id = create_channel(ctx)
 
-    {:ok, state1} = call_s1({:transfer, id, 50, ctx.sk1})
-    assert :update == get_fsm_state_s1(id)
-    {:ok, signed_state1} = call_s2({:recv_state, state1, ctx.sk2})
-    assert :open == get_fsm_state_s2(id)
-    {:ok, nil} = call_s1({:recv_state, signed_state1, ctx.sk1})
-    assert :open == get_fsm_state_s1(id)
+    # Transfer
+    perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 100, 200, 2)
 
-    assert 100 == signed_state1.initiator_amount
-    assert 200 == signed_state1.responder_amount
-    assert 1 == signed_state1.sequence
-
-    :ok = call_s1({:solo_close, id, 10, 2, ctx.sk1})
-
+    # Snapshot
+    :ok = call_s1({:snapshot, id, 10, 2, ctx.sk1})
     TestUtils.assert_transactions_mined()
 
-    close_height = Chain.top_height() + 2
-    channel = ChannelStateTree.get(Chain.chain_state().channels, id)
-    assert channel.slash_close == close_height
-    assert ChannelStateOnChain.active?(channel) == false
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
+             true
 
-    # submiting a snapshot fails
-    {:error, _} = call_s1({:snapshot, id, 10, 2, ctx.sk1})
+    # Solo close
+    :ok = call_s1({:solo_close, id, 10, 3, ctx.sk1})
+    TestUtils.assert_transactions_mined()
 
-    # the second peer was not notified of the solo_close so a snapshot will be submited to the pool but not included in a block
-    assert :open == get_fsm_state_s2(id)
-    assert map_size(Pool.get_pool()) == 0
-    :ok = call_s2({:snapshot, id, 10, 2, ctx.sk2})
-    :ok = Miner.mine_sync_block_to_chain()
-    assert map_size(Pool.get_pool()) == 1
-
-    # settle the channel
-    {:ok, s1_state} = call_s1({:get_channel, id})
-    {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 3, ctx.sk1)
-    assert :ok == Pool.add_transaction(settle_tx)
-
-    :ok = Miner.mine_sync_block_to_chain()
-    assert map_size(Pool.get_pool()) == 1
-
-    TestUtils.assert_balance(ctx.pk1, 120)
-    TestUtils.assert_balance(ctx.pk2, 250)
-    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
+             false
   end
 
   @tag :channels
@@ -610,6 +574,7 @@ defmodule AecoreChannelTest do
     [channel_create_tx] = ChannelStatePeer.get_signed_tx_list(initiator_state)
     solo_close_tx = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
     slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+    snapshot_tx = prepare_snapshot(id, &call_s2/1, 15, 1, ctx.sk2)
 
     {:ok, settle_tx} =
       ChannelStatePeer.settle(
@@ -636,7 +601,8 @@ defmodule AecoreChannelTest do
       settle_tx,
       close_tx,
       half_signed_deposit_tx,
-      half_signed_withdraw_tx
+      half_signed_withdraw_tx,
+      snapshot_tx
     ]
 
     for tx <- to_test do
@@ -867,6 +833,12 @@ defmodule AecoreChannelTest do
   defp prepare_solo_close_tx(id, peer_fun, fee, nonce, priv_key) when is_function(peer_fun, 1) do
     {:ok, state} = peer_fun.({:get_channel, id})
     {:ok, _, slash_tx} = ChannelStatePeer.solo_close(state, fee, nonce, priv_key)
+    slash_tx
+  end
+
+  defp prepare_snapshot(id, peer_fun, fee, nonce, priv_key) when is_function(peer_fun, 1) do
+    {:ok, state} = peer_fun.({:get_channel, id})
+    {:ok, slash_tx} = ChannelStatePeer.snapshot(state, fee, nonce, priv_key)
     slash_tx
   end
 
