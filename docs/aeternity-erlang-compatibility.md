@@ -100,7 +100,7 @@ iex> Miner.mine_sync_block_to_chain()
 - Create and mine a `NameUpdateTx`:
 ```elixir
 iex> name = "foobar.aet"
-iex> pointers = "{\"account_pubkey\":\"ak$wvqpnQHuHSQq2hs7Q7zNPUiZmpYZAAQ9SemGHRhXjq6KXYmLa\"}"
+iex> pointers = "{\"account_pubkey\":\"ak_wvqpnQHuHSQq2hs7Q7zNPUiZmpYZAAQ9SemGHRhXjq6KXYmLa\"}"
 iex> fee = 10
 iex> expire_by = 10000
 iex> client_ttl = 1000

@@ -372,7 +372,7 @@ defmodule Aecore.Account.Account do
   end
 
   @spec base58c_decode(String.t()) :: Keys.pubkey() | error()
-  def base58c_decode(<<"ak$", payload::binary>>) do
+  def base58c_decode(<<"ak_", payload::binary>>) do
     Bits.decode58(payload)
   end
 

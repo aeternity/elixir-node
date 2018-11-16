@@ -88,7 +88,7 @@ defmodule Aecore.Chain.Header do
   end
 
   @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
-  def base58c_decode(<<"bh$", payload::binary>>) do
+  def base58c_decode(<<"bh_", payload::binary>>) do
     Bits.decode58(payload)
   end
 

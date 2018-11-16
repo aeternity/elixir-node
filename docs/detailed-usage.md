@@ -17,7 +17,7 @@
   example query -
   ```
   Oracle.query(
-    "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
+    "ak_5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
     "currency => USD",
      5,
      10,
