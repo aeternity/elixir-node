@@ -88,7 +88,7 @@ defmodule Aecore.Chain.Identifier do
   end
 
   @spec decode_from_binary_list_to_value_list(list(binary()), type()) ::
-          list(value()) | {:error, String.t()}
+          {:ok, list(value())} | {:error, String.t()}
   def decode_from_binary_list_to_value_list([encoded_identifier | rest], type) do
     with {:ok, value} <- decode_from_binary_to_value(encoded_identifier, type),
          {:ok, rest_values} <- decode_from_binary_list_to_value_list(rest, type) do
