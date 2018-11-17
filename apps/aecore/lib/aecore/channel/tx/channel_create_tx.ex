@@ -49,6 +49,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   # Parameters
   - initiator_amount: the amount that the first sender commits
   - responder_amount: the amount that the second sender commits
+  - delegates: channel delegates list
   - locktime: number of blocks for dispute settling
   - state_hash: root hash of the initial offchain chainstate
   - channel_reserve: minimal amount of tokens held by the initiator or responder

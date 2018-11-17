@@ -37,6 +37,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   - initiator_amount: amount that the initiator account commits
   - responder: responder of the channel creation
   - responder_amount: amount that the responder account commits
+  - delegates: channel delegates list
   - channel_reserve: the reserve of the channel
   - locktime: amount of blocks before disputes are settled
   """
