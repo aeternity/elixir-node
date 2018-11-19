@@ -19,7 +19,6 @@ defmodule Aecore.Chain.Worker do
     KeyBlock,
     KeyHeader,
     MicroBlock,
-    MicroHeader,
     BlockValidation,
     Block,
     Header,
@@ -245,7 +244,7 @@ defmodule Aecore.Chain.Worker do
 
   @spec add_block(Block.t(), boolean()) :: :ok | {:error, String.t()}
   def add_block(
-        %{header: %{prev_hash: prev_hash, prev_key_hash: prev_key_hash, height: height}} = block,
+        %{header: %{prev_hash: prev_hash, prev_key_hash: prev_key_hash}} = block,
         loop_micro_block
       ) do
     with {:ok, prev_block} <- get_block(prev_hash),
@@ -256,7 +255,12 @@ defmodule Aecore.Chain.Worker do
              GovernanceConstants.number_of_blocks_for_target_recalculation()
            ),
          {:ok, new_chain_state} <-
-           Chainstate.calculate_and_validate_chain_state(block, prev_block_chain_state, height) do
+           BlockValidation.calculate_and_validate_block(
+             block,
+             prev_block,
+             prev_block_chain_state,
+             blocks_for_target_calculation
+           ) do
       add_validated_block(block, new_chain_state, loop_micro_block)
     else
       err -> err

@@ -3,58 +3,59 @@ defmodule Aecore.Chain.BlockValidation do
   Contains functions used to validate data inside of the block structure
   """
 
-  alias Aecore.Chain.{Block, Chainstate, Genesis, Header, Target}
+  alias Aecore.Chain.{KeyBlock, MicroBlock, Chainstate, Genesis, KeyHeader, MicroHeader, Target}
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Keys
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Pow.Pow
   alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Util.Header
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias MerklePatriciaTree.Trie
 
   @spec calculate_and_validate_block(
-          Block.t(),
-          Block.t(),
+          KeyBlock.t() | MicroBlock.t(),
+          KeyBlock.t() | MicroBlock.t(),
           Chainstate.t(),
-          list(Block.t())
+          list(KeyBlock.t())
         ) :: {:ok, Chainstate.t()} | {:error, String.t()}
+
   def calculate_and_validate_block(
-        %Block{
-          header: %Header{
-            height: height,
-            miner: miner,
-            time: time,
-            root_hash: root_hash,
-            target: target
-          },
-          txs: txs
-        } = new_block,
+        %{header: %{height: height, version: version, root_hash: root_hash}} = new_block,
         previous_block,
         old_chain_state,
         blocks_for_target_calculation
       ) do
+    block_specifically_valid =
+      case new_block do
+        %KeyBlock{} ->
+          validate_key_block(new_block, blocks_for_target_calculation)
+
+        %MicroBlock{} ->
+          validate_micro_block(new_block, previous_block)
+      end
+
     is_genesis = new_block == Genesis.block() && previous_block == nil
 
-    with true <- txs_meet_minimum_fee?(txs, old_chain_state, height),
-         :ok <- single_validate_block(new_block),
-         {:ok, new_chain_state} <-
-           Chainstate.calculate_and_validate_chain_state(
-             txs,
-             old_chain_state,
-             height,
-             miner
-           ) do
+    with {:ok, new_chain_state} <-
+           Chainstate.calculate_and_validate_chain_state(new_block, old_chain_state, height),
+         :ok <- block_specifically_valid do
       expected_root_hash = Chainstate.calculate_root_hash(new_chain_state)
-
-      expected_target =
-        Target.calculate_next_target(
-          time,
-          blocks_for_target_calculation
-        )
 
       cond do
         # do not check previous block height for genesis block, there is none
         !(is_genesis || check_correct_height?(new_block, previous_block)) ->
           {:error, "#{__MODULE__}: Incorrect height"}
+
+        !valid_prev_hash?(new_block, previous_block) ->
+          {:error, "#{__MODULE__}: Incorrect previous block hash"}
+
+        !valid_prev_key_hash?(new_block, previous_block) ->
+          {:error, "#{__MODULE__}: Incorrect previous key block hash"}
+
+        version != GovernanceConstants.protocol_version() ->
+          {:error, "#{__MODULE__}: Invalid protocol version"}
 
         !valid_header_time?(new_block) ->
           {:error, "#{__MODULE__}: Invalid header time"}
@@ -62,56 +63,96 @@ defmodule Aecore.Chain.BlockValidation do
         root_hash != expected_root_hash ->
           {:error, "#{__MODULE__}: Root hash not matching"}
 
-        target != expected_target ->
-          {:error, "#{__MODULE__}: Invalid block target"}
-
         true ->
           {:ok, new_chain_state}
       end
     else
-      false ->
-        {:error, "#{__MODULE__}: One or more transactions don't meet their minimum fee"}
-
       {:error, _} = error ->
         error
     end
   end
 
-  @spec single_validate_block(Block.t()) :: :ok | {:error, String.t()}
-  def single_validate_block(
-        %Block{
-          header: %Header{txs_hash: txs_hash, version: version} = header,
-          txs: txs
-        } = block
-      ) do
-    block_txs_count = length(txs)
+  defp validate_key_block(
+         %KeyBlock{
+           header: %KeyHeader{target: target, time: time} = header
+         },
+         blocks_for_target_calculation
+       ) do
+    expected_target =
+      Target.calculate_next_target(
+        time,
+        blocks_for_target_calculation
+      )
 
     cond do
-      txs_hash != calculate_txs_hash(txs) ->
-        {:error, "#{__MODULE__}: Root hash of transactions does not match the one in header"}
+      !is_solution_valid?(header) ->
+        {:error, "#{__MODULE__}: Invalid PoW solution"}
 
-      !(block |> validate_block_transactions() |> Enum.all?()) ->
-        {:error, "#{__MODULE__}: One or more transactions not valid"}
-
-      version != Block.current_block_version() ->
-        {:error, "#{__MODULE__}: Invalid block version"}
-
-      block_txs_count > GovernanceConstants.max_txs_per_block() ->
-        {:error, "#{__MODULE__}: Too many transactions"}
-
-      !valid_header_time?(block) ->
-        {:error, "#{__MODULE__}: Invalid header time"}
-
-      !is_target_met?(header) ->
-        {:error, "#{__MODULE__}: Header hash doesn't meet the target"}
+      target != expected_target ->
+        {:error, "#{__MODULE__}: Invalid block target"}
 
       true ->
         :ok
     end
   end
 
-  @spec validate_block_transactions(Block.t()) :: list(boolean())
-  def validate_block_transactions(%Block{txs: txs}) do
+  defp validate_micro_block(
+         %MicroBlock{
+           header:
+             %MicroHeader{time: new_time, signature: signature, txs_hash: txs_hash} = header,
+           txs: txs
+         } = new_block,
+         %{
+           header: %{time: prev_block_time, prev_key_hash: prev_key_hash} = prev_header
+         } = prev_block
+       ) do
+    prev_key_block =
+      case prev_block do
+        %KeyBlock{} ->
+          prev_block
+
+        %MicroBlock{} ->
+          {:ok, key_block} = Chain.get_block(prev_key_hash)
+          key_block
+      end
+
+    # header was signed with this signature in mining
+    header_with_zero_signature = %{header | signature: <<0::512>>}
+
+    is_signature_valid =
+      header_with_zero_signature
+      |> MicroHeader.encode_to_binary()
+      |> Keys.verify(signature, prev_key_block.header.miner)
+
+    is_minimum_distance_met =
+      case prev_header do
+        %KeyHeader{} ->
+          new_time > prev_block_time
+
+        %MicroHeader{} ->
+          new_time >= prev_block_time + GovernanceConstants.micro_block_distance()
+      end
+
+    cond do
+      !is_minimum_distance_met ->
+        {:error, "#{__MODULE__}: Micro block too close to previous block"}
+
+      !is_signature_valid ->
+        {:error, "#{__MODULE__}: Invalid micro block signature"}
+
+      txs_hash != calculate_txs_hash(txs) ->
+        {:error, "#{__MODULE__}: Root hash of transactions does not match the one in header"}
+
+      !(new_block |> validate_block_transactions() |> Enum.all?()) ->
+        {:error, "#{__MODULE__}: One or more transactions not valid"}
+
+      true ->
+        :ok
+    end
+  end
+
+  @spec validate_block_transactions(MicroBlock.t()) :: list(boolean())
+  def validate_block_transactions(%MicroBlock{txs: txs}) do
     Enum.map(txs, fn tx -> :ok == SignedTx.validate(tx) end)
   end
 
@@ -149,21 +190,33 @@ defmodule Aecore.Chain.BlockValidation do
     build_merkle_tree(list_txs, position + 1, PatriciaMerkleTree.enter(tree, key, val))
   end
 
+  defp valid_prev_hash?(%{header: %{prev_hash: new_prev_hash}}, %{
+         header: %{} = prev_header
+       }) do
+    new_prev_hash == Header.hash(prev_header)
+  end
+
+  defp valid_prev_key_hash?(%{header: %{prev_key_hash: new_prev_key_hash}}, %{
+         header: %{} = prev_header
+       }) do
+    new_prev_key_hash == Header.top_key_block_hash(prev_header)
+  end
+
   @spec check_correct_height?(Block.t(), Block.t()) :: boolean()
-  defp check_correct_height?(%Block{header: %Header{height: new_block_height}}, %Block{
-         header: %Header{height: previous_block_height}
+  defp check_correct_height?(%{header: %{height: new_block_height}}, %{
+         header: %{height: previous_block_height}
        }) do
     previous_block_height + 1 == new_block_height
   end
 
-  @spec valid_header_time?(Block.t()) :: boolean()
-  defp valid_header_time?(%Block{header: %Header{time: time}}) do
+  @spec valid_header_time?(KeyBlock.t() | MicroBlock.t()) :: boolean()
+  defp valid_header_time?(%{header: %{time: time}}) do
     time <
       System.system_time(:milliseconds) + GovernanceConstants.time_validation_future_limit_ms()
   end
 
-  @spec is_target_met?(Header.t()) :: true | false
-  defp is_target_met?(%Header{} = header) do
+  @spec is_solution_valid?(KeyHeader.t()) :: boolean()
+  defp is_solution_valid?(%KeyHeader{} = header) do
     server_pid = self()
     work = fn -> Pow.verify(header) end
 
