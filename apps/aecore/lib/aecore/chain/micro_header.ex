@@ -50,18 +50,16 @@ defmodule Aecore.Chain.MicroHeader do
   end
 
   @spec encode_to_binary(MicroHeader.t()) :: binary()
-  def encode_to_binary(
-        %MicroHeader{
-          height: height,
-          prev_hash: prev_hash,
-          prev_key_hash: prev_key_hash,
-          txs_hash: txs_hash,
-          root_hash: root_hash,
-          time: time,
-          version: version,
-          signature: signature
-        } = header
-      ) do
+  def encode_to_binary(%MicroHeader{
+        height: height,
+        prev_hash: prev_hash,
+        prev_key_hash: prev_key_hash,
+        txs_hash: txs_hash,
+        root_hash: root_hash,
+        time: time,
+        version: version,
+        signature: signature
+      }) do
     flags = flags()
     flags_byte_size = trunc((@tag_size + @unused_flags_size) / 8)
 

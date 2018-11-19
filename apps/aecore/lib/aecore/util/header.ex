@@ -16,6 +16,7 @@ defmodule Aecore.Util.Header do
     end
   end
 
+  @spec top_key_block_hash(KeyHeader.t() | MicroHeader.t()) :: binary()
   def top_key_block_hash(prev_header) do
     case prev_header do
       %KeyHeader{} ->

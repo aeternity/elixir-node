@@ -7,7 +7,6 @@ defmodule Aecore.Miner.Worker do
   use GenServer
 
   alias Aecore.Chain.{
-    Genesis,
     MicroBlock,
     MicroHeader,
     KeyBlock,
@@ -34,7 +33,6 @@ defmodule Aecore.Miner.Worker do
 
   @mersenne_prime 2_147_483_647
 
-  @micro_block_distance 3000
   @minimum_distance_from_key_block 1
 
   @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
@@ -343,12 +341,13 @@ defmodule Aecore.Miner.Worker do
     root_hash = Chainstate.calculate_root_hash(new_chain_state)
     current_time = System.system_time(:milliseconds)
 
-    # check if previous block is a key block
+    # if the previous block is a key block - the time should just be higher,
+    # if it's a micro block - atleast 3 seconds higher
     minimum_distance =
       if prev_hash == prev_key_hash do
         @minimum_distance_from_key_block
       else
-        @micro_block_distance
+        GovernanceConstants.micro_block_distance()
       end
 
     time = max(current_time, last_time + minimum_distance)
