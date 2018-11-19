@@ -108,6 +108,17 @@ defmodule Aecore.Tx.Pool.Worker do
     tx |> :erlang.term_to_binary() |> :erlang.byte_size()
   end
 
+  @spec garbage_collection(non_neg_integer()) :: :ok
+  def garbage_collection(top_height) do
+    txs = get_pool()
+
+    Enum.each(txs, fn {_key, tx} ->
+      if tx.data.ttl < top_height && tx.data.ttl != 0 do
+        remove_transaction(tx)
+      end
+    end)
+  end
+
   # Private functions
 
   @spec split_blocks(list(Block.t()), String.t(), list()) :: list()

@@ -93,4 +93,17 @@ defmodule AecoreTxsPoolTest do
                )
              )
   end
+
+  # @tag timeout: 20_000
+  # @tag :txs_pool
+  # test "remove expired transactions by ttl", wallet do
+  #   Pool.get_and_empty_pool()
+
+  #   nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
+
+  #   for n <- 1..10 do
+  #     Miner.mine_sync_block_to_chain()
+  #   end
+
+  # end
 end
