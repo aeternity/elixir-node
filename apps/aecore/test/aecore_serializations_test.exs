@@ -151,7 +151,8 @@ defmodule AecoreSerializationTest do
           owner: %Identifier{value: "", type: :oracle},
           query_fee: 5,
           query_format: "foo: bar",
-          response_format: "boolean"
+          response_format: "boolean",
+          vm_version: 0
         }
 
       OracleQuery ->
