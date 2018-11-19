@@ -79,7 +79,7 @@ iex> Miner.mine_sync_block_to_chain()
 #### Naming Transactions
 - Create and mine a `NamePreClaimTx`:
 ```elixir
-iex> name = "foobar.aet"
+iex> name = "foobar.test"
 iex> name_salt = 100
 iex> fee = 10
 iex> ttl = 1000
@@ -89,7 +89,7 @@ iex> Miner.mine_sync_block_to_chain()
 
 - Create and mine a `NameClaimTx`:
 ```elixir
-iex> name = "foobar.aet"
+iex> name = "foobar.test"
 iex> name_salt = 100
 iex> fee = 10
 iex> ttl = 1000
@@ -99,7 +99,7 @@ iex> Miner.mine_sync_block_to_chain()
 
 - Create and mine a `NameUpdateTx`:
 ```elixir
-iex> name = "foobar.aet"
+iex> name = "foobar.test"
 iex> pointers = "{\"account_pubkey\":\"ak_wvqpnQHuHSQq2hs7Q7zNPUiZmpYZAAQ9SemGHRhXjq6KXYmLa\"}"
 iex> fee = 10
 iex> expire_by = 10000
@@ -111,7 +111,7 @@ iex> Miner.mine_sync_block_to_chain()
 
 - Create and mine a `NameTransferTx`:
 ```elixir
-iex> name = "foobar.aet"
+iex> name = "foobar.test"
 iex> transfer_to_pub = <<92, 207, 73, 104, 187, 223, 191, 242, 179, 82, 37, 218, 72, 109, 92, 93, 40, 253, 163, 220, 208, 134, 169, 81, 69, 56, 212, 89, 81, 100, 132, 194>>
 iex> fee = 10
 iex> ttl = 1000
@@ -129,7 +129,7 @@ iex> Account.spend(transfer_to_pub, amount, fee, payload)
 iex> Miner.mine_sync_block_to_chain()
 iex> next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
 iex> transfer_to_priv = <<205, 8, 195, 216, 100, 12, 253, 66, 144, 133, 18, 213, 67, 217, 4, 115, 143, 179, 32, 99, 119, 167, 63, 6, 234, 219, 85, 28, 23, 211, 153, 165, 92, 207, 73, 104, 187, 223, 191, 242, 179, 82, 37, 218, 72, 109, 92, 93, 40, 253, 163, 220, 208, 134, 169, 81, 69, 56, 212, 89, 81, 123, 132, 194>>
-iex> name = "foobar.aet"
+iex> name = "foobar.test"
 iex> fee = 10
 iex> ttl = 1000
 iex> Account.name_revoke(transfer_to_pub, transfer_to_priv, name, fee, next_nonce, ttl)

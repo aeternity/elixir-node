@@ -181,8 +181,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
       channel == :none ->
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
-      channel.initiator_amount + channel.responder_amount !=
-          initiator_amount + responder_amount + fee ->
+      channel.total_amount != initiator_amount + responder_amount + fee ->
         {:error,
          "#{__MODULE__}: Wrong total balance, expected #{
            channel.initiator_amount + channel.responder_amount

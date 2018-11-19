@@ -24,7 +24,7 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @split_name_symbol "."
 
-  @name_registrars [@split_name_symbol <> "aet", @split_name_symbol <> "test"]
+  @name_registrars [@split_name_symbol <> "test"]
 
   @pre_claim_ttl 300
 

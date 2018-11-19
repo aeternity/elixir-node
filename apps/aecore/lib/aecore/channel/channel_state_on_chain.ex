@@ -21,12 +21,14 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @type t :: %ChannelStateOnChain{
           initiator_pubkey: Keys.pubkey(),
           responder_pubkey: Keys.pubkey(),
+          delegates: list(Keys.pubkey()),
           total_amount: integer(),
           initiator_amount: integer(),
           responder_amount: integer(),
           lock_period: non_neg_integer(),
           closing_at: integer(),
           sequence: integer(),
+          solo_sequence: integer(),
           state_hash: binary(),
           channel_reserve: non_neg_integer()
         }
@@ -45,24 +47,28 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   # Parameters
   - initiator_pubkey
   - responder_pubkey
+  - delegates - list of delegates alowed to perform certain operations
   - total_amount - the total amount of tokens in the channel
   - initiator_amount - amount deposited by initiator in create_tx or from poi
   - responder_amount - amount deposited by responder in create_tx or from poi
   - lock_period - time before slashing is settled
   - closing_at - when != 0: block height when channel will be irrevocably closed
   - sequence - sequence of highest known fully signed offchain chainstate
+  - solo_sequence - when !=0: sequence of first force progresses
   - state_hash - root hash of last known offchain chainstate
   - channel_reserve - minimal amount of tokens held by the initiator or responder
   """
   defstruct [
     :initiator_pubkey,
     :responder_pubkey,
+    :delegates,
     :total_amount,
     :initiator_amount,
     :responder_amount,
     :lock_period,
     :closing_at,
     :sequence,
+    :solo_sequence,
     :state_hash,
     :channel_reserve
   ]
@@ -72,6 +78,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec create(
           Keys.pubkey(),
           Keys.pubkey(),
+          list(Keys.pubkey()),
           integer(),
           integer(),
           non_neg_integer(),
@@ -81,6 +88,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def create(
         initiator_pubkey,
         responder_pubkey,
+        delegates,
         initiator_amount,
         responder_amount,
         lock_period,
@@ -90,12 +98,14 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     %ChannelStateOnChain{
       initiator_pubkey: initiator_pubkey,
       responder_pubkey: responder_pubkey,
+      delegates: delegates,
       total_amount: initiator_amount + responder_amount,
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
       lock_period: lock_period,
       closing_at: 0,
       sequence: 0,
+      solo_sequence: 0,
       state_hash: state_hash,
       channel_reserve: channel_reserve
     }
@@ -449,9 +459,12 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       Identifier.create_encoded_to_binary(channel.responder_pubkey, :account),
       :binary.encode_unsigned(channel.total_amount),
       :binary.encode_unsigned(channel.initiator_amount),
+      :binary.encode_unsigned(channel.responder_amount),
       :binary.encode_unsigned(channel.channel_reserve),
+      Identifier.create_encoded_to_binary_list(channel.delegates, :account),
       channel.state_hash,
       :binary.encode_unsigned(channel.sequence),
+      :binary.encode_unsigned(channel.solo_sequence),
       :binary.encode_unsigned(channel.lock_period),
       :binary.encode_unsigned(channel.closing_at)
     ]
@@ -463,29 +476,33 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         encoded_responder_pubkey,
         encoded_total_amount,
         encoded_initiator_amount,
+        encoded_responder_amount,
         channel_reserve,
+        encoded_delegates,
         state_hash,
         sequence,
+        solo_sequence,
         lock_period,
         closing_at
       ]) do
-    total_amount = :binary.decode_unsigned(encoded_total_amount)
-    initiator_amount = :binary.decode_unsigned(encoded_initiator_amount)
-
     with {:ok, initiator_pubkey} <-
            Identifier.decode_from_binary_to_value(encoded_initiator_pubkey, :account),
          {:ok, responder_pubkey} <-
-           Identifier.decode_from_binary_to_value(encoded_responder_pubkey, :account) do
+           Identifier.decode_from_binary_to_value(encoded_responder_pubkey, :account),
+         {:ok, delegates} <-
+           Identifier.decode_from_binary_list_to_value_list(encoded_delegates, :account) do
       {:ok,
        %ChannelStateOnChain{
          initiator_pubkey: initiator_pubkey,
          responder_pubkey: responder_pubkey,
-         total_amount: total_amount,
-         initiator_amount: initiator_amount,
-         responder_amount: total_amount - initiator_amount,
+         delegates: delegates,
+         total_amount: :binary.decode_unsigned(encoded_total_amount),
+         initiator_amount: :binary.decode_unsigned(encoded_initiator_amount),
+         responder_amount: :binary.decode_unsigned(encoded_responder_amount),
          lock_period: :binary.decode_unsigned(lock_period),
          closing_at: :binary.decode_unsigned(closing_at),
          sequence: :binary.decode_unsigned(sequence),
+         solo_sequence: :binary.decode_unsigned(solo_sequence),
          state_hash: state_hash,
          channel_reserve: :binary.decode_unsigned(channel_reserve)
        }}
