@@ -5,14 +5,12 @@ defmodule AecoreChainTest do
 
   use ExUnit.Case
 
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
-  alias Aecore.Chain.BlockValidation
+  alias Aecore.Chain.{Chainstate, KeyBlock, KeyHeader, BlockValidation}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Util.Header
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -35,27 +33,26 @@ defmodule AecoreChainTest do
 
     {:ok, new_chain_state} =
       Chainstate.calculate_and_validate_chain_state(
-        [],
+        top_block,
         chain_state,
-        2,
-        elem(Keys.keypair(:sign), 0)
+        2
       )
 
     new_root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
-    block_unmined = %Block{
-      header: %Header{
+    block_unmined = %KeyBlock{
+      header: %KeyHeader{
         height: top_block.header.height + 1,
         prev_hash: top_block_hash,
-        txs_hash: <<0::256>>,
+        prev_key_hash: top_block_hash,
         root_hash: new_root_hash,
         target: 553_713_663,
         nonce: 0,
-        miner: elem(Keys.keypair(:sign), 0),
         time: System.system_time(:milliseconds),
-        version: 15
-      },
-      txs: []
+        miner: elem(Keys.keypair(:sign), 0),
+        beneficiary: elem(Keys.keypair(:sign), 0),
+        version: 29
+      }
     }
 
     {:ok, block_mined} = Miner.mine_sync_block(block_unmined)

@@ -3,6 +3,8 @@ defmodule Aecore.Governance.GovernanceConstants do
   Module containing governance constants
   """
 
+  @protocol_version 29
+
   @number_of_blocks_for_target_recalculation 10
 
   # 60sec * 1000ms * 5 = 300_000ms
@@ -41,6 +43,9 @@ defmodule Aecore.Governance.GovernanceConstants do
   @max_txs_per_block 10_946
 
   # getter functions with same name for use in other modules
+
+  @spec protocol_version :: non_neg_integer()
+  def protocol_version, do: @protocol_version
 
   @spec number_of_blocks_for_target_recalculation :: non_neg_integer()
   def number_of_blocks_for_target_recalculation, do: @number_of_blocks_for_target_recalculation

@@ -11,8 +11,9 @@ defmodule Aecore.Pow.Cuckoo do
 
   require Logger
 
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.KeyHeader
   alias Aecore.Pow.Hashcash
+  alias Aecore.Util.Header
   alias Aeutil.{Environment, Hash}
 
   @behaviour Aecore.Pow.PowAlgorithm
@@ -22,8 +23,8 @@ defmodule Aecore.Pow.Cuckoo do
   @doc """
   Proof of Work verification (with difficulty check)
   """
-  @spec verify(Header.t()) :: boolean()
-  def verify(%Header{target: target, pow_evidence: soln} = header) do
+  @spec verify(KeyHeader.t()) :: boolean()
+  def verify(%KeyHeader{target: target, pow_evidence: soln} = header) do
     if test_target(soln, target) do
       {:ok, response} = process(:verify, header)
       response
@@ -35,8 +36,8 @@ defmodule Aecore.Pow.Cuckoo do
   @doc """
   Find a nonce
   """
-  @spec generate(Header.t()) :: {:ok, Header.t()} | error()
-  def generate(%Header{} = header), do: process(:generate, header)
+  @spec generate(KeyHeader.t()) :: {:ok, KeyHeader.t()} | error()
+  def generate(%KeyHeader{} = header), do: process(:generate, header)
 
   defp process(process, header) do
     with {:ok, builder} <- hash_header(builder(process, header)),
@@ -51,7 +52,7 @@ defmodule Aecore.Pow.Cuckoo do
     end
   end
 
-  defp hash_header(%{header: %Header{nonce: nonce} = header} = builder) do
+  defp hash_header(%{header: %KeyHeader{nonce: nonce} = header} = builder) do
     blake2b = Header.hash(%{header | nonce: 0, pow_evidence: :no_value})
     {:ok, %{builder | hash: pack_header_and_nonce(blake2b, nonce)}}
   end
@@ -97,7 +98,7 @@ defmodule Aecore.Pow.Cuckoo do
   defp exec_os_cmd(
          %{
            process: process,
-           header: %Header{pow_evidence: pow_evidence},
+           header: %KeyHeader{pow_evidence: pow_evidence},
            cmd: command,
            cmd_opt: options
          } = builder
@@ -180,7 +181,7 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp build_response(
-         %{header: %Header{target: target} = header, response: {:generated, soln}} = builder
+         %{header: %KeyHeader{target: target} = header, response: {:generated, soln}} = builder
        ) do
     if test_target(soln, target) do
       {:ok, %{builder | response: %{header | pow_evidence: soln}}}
@@ -230,7 +231,7 @@ defmodule Aecore.Pow.Cuckoo do
     hash_str ++ nonce_str
   end
 
-  defp builder(process, %Header{} = header) do
+  defp builder(process, %KeyHeader{} = header) do
     %{
       :header => header,
       :hash => nil,

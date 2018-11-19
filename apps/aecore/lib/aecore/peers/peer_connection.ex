@@ -5,13 +5,14 @@ defmodule Aecore.Peers.PeerConnection do
 
   use GenServer
 
-  alias Aecore.Chain.{Block, Genesis, Header}
+  alias Aecore.Chain.{Block, Genesis}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
   alias Aecore.Sync.Sync
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
+  alias Aecore.Util.Header
   alias Aeutil.Serialization
 
   require Logger

@@ -3,7 +3,7 @@ defmodule Aecore.Channel.Worker do
   Module for managing Channels
   """
 
-  alias Aecore.Chain.Block
+  alias Aecore.Chain.MicroBlock
   alias Aecore.Channel.{ChannelStatePeer, ChannelTransaction, ChannelOffChainTx}
 
   alias Aecore.Channel.Tx.{
@@ -735,7 +735,7 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_info({:gproc_ps_event, event, %{info: %Block{txs: txs}}}, state) do
+  def handle_info({:gproc_ps_event, event, %{info: %MicroBlock{txs: txs}}}, state) do
     case event do
       # info is a block
       :new_top_block ->
@@ -743,6 +743,12 @@ defmodule Aecore.Channel.Worker do
           Enum.each(txs, fn tx -> new_tx_mined(tx) end)
         end)
     end
+
+    {:noreply, state}
+  end
+
+  def handle_info({:gproc_ps_event, event, %{info: _}}, state) do
+    Logger.info(fn -> "#{__MODULE__}: Unexpected event notification: #{inspect(event)}" end)
 
     {:noreply, state}
   end

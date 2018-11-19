@@ -14,6 +14,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Util.Header, as: HeaderUtils
 
   setup_all do
     Code.require_file("test_utils.ex", "./test")
@@ -49,7 +50,7 @@ defmodule AecoreValidationTest do
     prev_block = get_prev_block()
 
     top_block = Chain.top_block()
-    top_block_hash = Header.hash(top_block.header)
+    top_block_hash = HeaderUtils.hash(top_block.header)
 
     blocks_for_target_calculation =
       Chain.get_blocks(
@@ -84,7 +85,7 @@ defmodule AecoreValidationTest do
     prev_block = get_prev_block()
 
     top_block = Chain.top_block()
-    top_block_hash = Header.hash(top_block.header)
+    top_block_hash = HeaderUtils.hash(top_block.header)
 
     blocks_for_target_calculation =
       Chain.get_blocks(

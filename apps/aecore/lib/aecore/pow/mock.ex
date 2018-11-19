@@ -3,7 +3,7 @@ defmodule Aecore.Pow.Mock do
   Provides a mock proof of work that always succeeds generation and uses predefined integers as proof. In validation checks that integers are as expected
   """
 
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.KeyHeader
 
   @behaviour Aecore.Pow.PowAlgorithm
 
@@ -12,17 +12,17 @@ defmodule Aecore.Pow.Mock do
   @doc """
   Proof of Work verification - check pow_evidence == proof()
   """
-  @spec verify(Header.t()) :: boolean()
-  def verify(%Header{pow_evidence: pow}) do
+  @spec verify(KeyHeader.t()) :: boolean()
+  def verify(%KeyHeader{pow_evidence: pow}) do
     pow == proof()
   end
 
   @doc """
   Returns a header with pow_evidence set to proof()
   """
-  @spec generate(Header.t()) :: {:ok, Header.t()}
-  def generate(%Header{} = header) do
-    {:ok, %Header{header | pow_evidence: proof()}}
+  @spec generate(KeyHeader.t()) :: {:ok, KeyHeader.t()}
+  def generate(%KeyHeader{} = header) do
+    {:ok, %KeyHeader{header | pow_evidence: proof()}}
   end
 
   defp proof do

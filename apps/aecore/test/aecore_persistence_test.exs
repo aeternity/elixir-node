@@ -6,7 +6,7 @@ defmodule PersistenceTest do
   alias Aecore.Keys
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.Header
+  alias Aecore.Util.Header
   alias Aecore.Account.{Account, AccountStateTree}
 
   setup do

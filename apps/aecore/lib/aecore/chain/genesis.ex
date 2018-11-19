@@ -4,9 +4,10 @@ defmodule Aecore.Chain.Genesis do
   """
 
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.{Block, Chainstate, Header}
-  alias Aecore.Governance.GovernanceConstants, as: Governance
-  alias Aecore.Governance.GenesisConstants, as: GenesisConstants
+  alias Aecore.Chain.{KeyBlock, Chainstate, KeyHeader}
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Governance.GenesisConstants
+  alias Aecore.Util.Header
   alias Aeutil.Environment
 
   require Logger
@@ -16,10 +17,10 @@ defmodule Aecore.Chain.Genesis do
     Header.hash(header())
   end
 
-  @spec block() :: Block.t()
+  @spec block() :: KeyBlock.t()
   def block do
     header = header()
-    %Block{header: header, txs: []}
+    %KeyBlock{header: header}
   end
 
   @spec populated_trees() :: Chainstate.t()
@@ -30,7 +31,7 @@ defmodule Aecore.Chain.Genesis do
   @spec populated_trees(list()) :: Chainstate.t()
   def populated_trees(accounts) do
     chainstate_init = Chainstate.create_chainstate_trees()
-    miner = {GenesisConstants.miner(), Governance.coinbase_transaction_amount()}
+    miner = {GenesisConstants.miner(), GovernanceConstants.coinbase_transaction_amount()}
 
     Enum.reduce([miner | accounts], chainstate_init, fn {pubkey, balance}, new_trees ->
       new_acounts =
@@ -71,21 +72,20 @@ defmodule Aecore.Chain.Genesis do
     end
   end
 
-  @spec header() :: Header.t()
-  defp header do
-    header = %{
+  @spec header() :: KeyHeader.t()
+  def header do
+    %KeyHeader{
       height: GenesisConstants.height(),
       prev_hash: GenesisConstants.prev_hash(),
-      txs_hash: GenesisConstants.txs_hash(),
+      prev_key_hash: GenesisConstants.prev_key_hash(),
       root_hash: Chainstate.calculate_root_hash(populated_trees()),
       time: GenesisConstants.time(),
       nonce: GenesisConstants.nonce(),
       miner: GenesisConstants.miner(),
+      beneficiary: GenesisConstants.beneficiary(),
       pow_evidence: GenesisConstants.evidence(),
-      version: GenesisConstants.version(),
+      version: GovernanceConstants.protocol_version(),
       target: GenesisConstants.target()
     }
-
-    struct(Header, header)
   end
 end

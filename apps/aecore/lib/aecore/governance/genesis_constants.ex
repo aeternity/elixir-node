@@ -5,7 +5,7 @@ defmodule Aecore.Governance.GenesisConstants do
 
   @prev_hash <<0::256>>
 
-  @txs_hash <<0::256>>
+  @prev_key_hash <<0::256>>
 
   @time 0
 
@@ -15,7 +15,7 @@ defmodule Aecore.Governance.GenesisConstants do
 
   @miner <<0::256>>
 
-  @version 15
+  @beneficiary <<0::256>>
 
   @target 0x2100FFFF
 
@@ -24,8 +24,8 @@ defmodule Aecore.Governance.GenesisConstants do
   @spec prev_hash :: binary()
   def prev_hash, do: @prev_hash
 
-  @spec txs_hash :: binary()
-  def txs_hash, do: @txs_hash
+  @spec prev_key_hash :: binary()
+  def prev_key_hash, do: @prev_key_hash
 
   @spec time :: non_neg_integer()
   def time, do: @time
@@ -39,8 +39,8 @@ defmodule Aecore.Governance.GenesisConstants do
   @spec miner :: binary()
   def miner, do: @miner
 
-  @spec version :: non_neg_integer()
-  def version, do: @version
+  @spec beneficiary :: binary()
+  def beneficiary, do: @beneficiary
 
   @spec target :: non_neg_integer
   def target, do: @target
