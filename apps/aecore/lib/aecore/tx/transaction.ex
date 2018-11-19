@@ -10,6 +10,7 @@ defmodule Aecore.Tx.Transaction do
       alias Aecore.Governance.GovernanceConstants
 
       @behaviour Transaction
+      @valid_txs GovernanceConstants.get_valid_txs_type()
 
       @spec chainstate_senders?() :: boolean()
       def chainstate_senders?() do
@@ -18,10 +19,14 @@ defmodule Aecore.Tx.Transaction do
 
       @spec gas_price :: non_neg_integer()
       def gas_price do
-        GovernanceConstants.tx_base_gas(__MODULE__)
+        if Enum.member?(GovernanceConstants.get_valid_txs_type(), __MODULE__) do
+          GovernanceConstants.default_tx_gas_price()
+        else
+          GovernanceConstants.block_gas_limit()
+        end
       end
 
-      defoverridable chainstate_senders?: 0
+      defoverridable chainstate_senders?: 0, gas_price: 0
     end
   end
 
