@@ -242,7 +242,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec add_block(Block.t(), boolean()) :: :ok | {:error, String.t()}
+  @spec add_block(KeyBlock.t() | MicroBlock.t(), boolean()) :: :ok | {:error, String.t()}
   def add_block(
         %{header: %{prev_hash: prev_hash, prev_key_hash: prev_key_hash}} = block,
         loop_micro_block
@@ -428,7 +428,7 @@ defmodule Aecore.Chain.Worker do
         node_is_leader: new_node_is_leader
     }
 
-    if top_height < height do
+    if top_height <= height do
       Persistence.batch_write(%{
         # Transform from chain state
         :chain_state => %{

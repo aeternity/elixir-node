@@ -321,7 +321,7 @@ defmodule Aecore.Miner.Worker do
     txs_list = get_pool_values()
     ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
-    candidate_height = top_height + 1
+    candidate_height = top_height
 
     valid_txs_by_chainstate =
       Chainstate.get_valid_txs(ordered_txs_list, chain_state, candidate_height)

@@ -38,9 +38,9 @@ defmodule Aecore.Chain.BlockValidation do
 
     is_genesis = new_block == Genesis.block() && previous_block == nil
 
-    with {:ok, new_chain_state} <-
-           Chainstate.calculate_and_validate_chain_state(new_block, old_chain_state, height),
-         :ok <- block_specifically_valid do
+    with :ok <- block_specifically_valid,
+         {:ok, new_chain_state} <-
+           Chainstate.calculate_and_validate_chain_state(new_block, old_chain_state, height) do
       expected_root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
       cond do
@@ -85,11 +85,11 @@ defmodule Aecore.Chain.BlockValidation do
       )
 
     cond do
-      !is_solution_valid?(header) ->
-        {:error, "#{__MODULE__}: Invalid PoW solution"}
-
       target != expected_target ->
         {:error, "#{__MODULE__}: Invalid block target"}
+
+      !is_solution_valid?(header) ->
+        {:error, "#{__MODULE__}: Invalid PoW solution"}
 
       true ->
         :ok
@@ -101,7 +101,7 @@ defmodule Aecore.Chain.BlockValidation do
            header:
              %MicroHeader{time: new_time, signature: signature, txs_hash: txs_hash} = header,
            txs: txs
-         } = new_block,
+         },
          %{
            header: %{time: prev_block_time, prev_key_hash: prev_key_hash} = prev_header
          } = prev_block
@@ -142,9 +142,6 @@ defmodule Aecore.Chain.BlockValidation do
 
       txs_hash != calculate_txs_hash(txs) ->
         {:error, "#{__MODULE__}: Root hash of transactions does not match the one in header"}
-
-      !(new_block |> validate_block_transactions() |> Enum.all?()) ->
-        {:error, "#{__MODULE__}: One or more transactions not valid"}
 
       true ->
         :ok
@@ -202,11 +199,17 @@ defmodule Aecore.Chain.BlockValidation do
     new_prev_key_hash == Header.top_key_block_hash(prev_header)
   end
 
-  @spec check_correct_height?(Block.t(), Block.t()) :: boolean()
-  defp check_correct_height?(%{header: %{height: new_block_height}}, %{
+  @spec check_correct_height?(KeyBlock.t(), KeyBlock.t() | MicroHeader.t()) :: boolean()
+  defp check_correct_height?(%KeyBlock{header: %KeyHeader{height: new_block_height}}, %{
          header: %{height: previous_block_height}
        }) do
     previous_block_height + 1 == new_block_height
+  end
+
+  defp check_correct_height?(%MicroBlock{header: %MicroHeader{height: new_block_height}}, %{
+         header: %{height: previous_block_height}
+       }) do
+    previous_block_height == new_block_height
   end
 
   @spec valid_header_time?(KeyBlock.t() | MicroBlock.t()) :: boolean()

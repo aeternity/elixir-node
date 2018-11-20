@@ -61,20 +61,18 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   @spec calculate_and_validate_chain_state(
-          list(),
+          KeyBlock.t() | MicroBlock.t(),
           Chainstate.t(),
           non_neg_integer()
         ) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_chain_state(block, chainstate, block_height) do
-    chainstate_with_pruned_calls = Call.prune_calls(chainstate, block_height)
-
     updated_chainstate =
       case block do
         %KeyBlock{header: %KeyHeader{}} ->
-          chainstate_with_pruned_calls
+          Call.prune_calls(chainstate, block_height)
 
         %MicroBlock{txs: txs} ->
-          Enum.reduce_while(txs, chainstate_with_pruned_calls, fn tx, chainstate_acc ->
+          Enum.reduce_while(txs, chainstate, fn tx, chainstate_acc ->
             case apply_transaction_on_state(chainstate_acc, block_height, tx) do
               {:ok, updated_chainstate} ->
                 {:cont, updated_chainstate}
