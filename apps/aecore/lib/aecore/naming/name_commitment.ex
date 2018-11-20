@@ -46,7 +46,7 @@ defmodule Aecore.Naming.NameCommitment do
   def commitment_hash(name, name_salt) when is_integer(name_salt) do
     case NameUtil.normalize_and_validate_name(name) do
       {:ok, normalized_name} ->
-        hash_name = Hash.hash(normalized_name)
+        {:ok, hash_name} = NameUtil.normalized_namehash(normalized_name)
         {:ok, Hash.hash(hash_name <> <<name_salt::integer-size(256)>>)}
 
       {:error, _} = error ->
