@@ -123,6 +123,7 @@ defmodule AecoreChannelCompatibilityTest do
       |> ChannelStatePeer.initialize(
         ctx.pk_initiator,
         ctx.pk_responder,
+        [],
         channel_reserve,
         :initiator
       )
@@ -219,13 +220,13 @@ defmodule AecoreChannelCompatibilityTest do
 
     assert :ok ==
              call_s1(
-               {:initialize, tmp_id, ctx.pk_initiator, ctx.pk_responder, :initiator,
+               {:initialize, tmp_id, ctx.pk_initiator, ctx.pk_responder, [], :initiator,
                 channel_reserve}
              )
 
     assert :ok ==
              call_s2(
-               {:initialize, tmp_id, ctx.pk_initiator, ctx.pk_responder, :responder,
+               {:initialize, tmp_id, ctx.pk_initiator, ctx.pk_responder, [], :responder,
                 channel_reserve}
              )
 

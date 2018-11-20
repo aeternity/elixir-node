@@ -39,6 +39,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           fsm_state: fsm_state(),
           initiator_pubkey: Keys.pubkey(),
           responder_pubkey: Keys.pubkey(),
+          delegates: list(Keys.pubkey()),
           role: Channel.role(),
           channel_id: binary(),
           mutually_signed_tx: list(ChannelOffChainTx.t()),
@@ -54,6 +55,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     :fsm_state,
     :initiator_pubkey,
     :responder_pubkey,
+    :delegates,
     :role,
     :channel_id,
     :channel_reserve,
@@ -271,6 +273,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           binary(),
           Keys.pubkey(),
           Keys.pubkey(),
+          list(Keys.pubkey()),
           non_neg_integer(),
           Channel.role()
         ) :: ChannelStatePeer.t()
@@ -278,6 +281,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         temporary_id,
         initiator_pubkey,
         responder_pubkey,
+        delegates,
         channel_reserve,
         role
       ) do
@@ -285,6 +289,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
       fsm_state: :initialized,
       initiator_pubkey: initiator_pubkey,
       responder_pubkey: responder_pubkey,
+      delegates: delegates,
       role: role,
       channel_reserve: channel_reserve,
       channel_id: temporary_id
@@ -423,6 +428,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           role: :initiator,
           initiator_pubkey: initiator_pubkey,
           responder_pubkey: responder_pubkey,
+          delegates: delegates,
           mutually_signed_tx: [],
           highest_half_signed_tx: nil,
           channel_reserve: channel_reserve
@@ -440,6 +446,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     channel_create_tx_spec = %{
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
+      delegates: delegates,
       locktime: locktime,
       channel_reserve: channel_reserve,
       state_hash: <<>>
@@ -488,6 +495,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           role: :responder,
           initiator_pubkey: initiator_pubkey,
           responder_pubkey: responder_pubkey,
+          delegates: correct_delegates,
           mutually_signed_tx: [],
           highest_half_signed_tx: nil,
           channel_reserve: correct_channel_reserve
@@ -507,6 +515,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
            %{
              initiator_amount: correct_initiator_amount,
              responder_amount: correct_responder_amount,
+             delegates: correct_delegates,
              channel_reserve: correct_channel_reserve,
              locktime: correct_locktime
            }

@@ -35,10 +35,11 @@ defmodule Aecore.Oracle.Oracle do
           query_format: binary(),
           response_format: binary(),
           query_fee: integer(),
-          expires: integer()
+          expires: integer(),
+          vm_version: non_neg_integer()
         }
 
-  defstruct [:owner, :query_format, :response_format, :query_fee, :expires]
+  defstruct [:owner, :query_format, :response_format, :query_fee, :expires, :vm_version]
   # use ExConstructor
   use Aecore.Util.Serializable
 
@@ -56,13 +57,15 @@ defmodule Aecore.Oracle.Oracle do
         query_fee,
         fee,
         ttl,
-        tx_ttl \\ 0
+        tx_ttl \\ 0,
+        vm_version \\ 0
       ) do
     payload = %{
       query_format: query_format,
       response_format: response_format,
       query_fee: query_fee,
-      ttl: ttl
+      ttl: ttl,
+      vm_version: vm_version
     }
 
     {pubkey, privkey} = Keys.keypair(:sign)
@@ -170,6 +173,13 @@ defmodule Aecore.Oracle.Oracle do
     {:ok, tx} = SignedTx.sign_tx(tx_data, privkey)
     Pool.add_transaction(tx)
   end
+
+  @spec check_vm_version(non_neg_integer()) :: :ok | {:error, String.t()}
+  def check_vm_version(0), do: :ok
+  def check_vm_version(2), do: :ok
+
+  def check_vm_version(vm_version),
+    do: {:error, "#{__MODULE__} Bad VM version: #{inspect(vm_version)}"}
 
   def calculate_minimum_fee(relative_ttl) do
     Float.ceil(relative_ttl * GovernanceConstants.oracle_ttl_fee_per_block())
@@ -308,19 +318,21 @@ defmodule Aecore.Oracle.Oracle do
       oracle.query_format,
       oracle.response_format,
       :binary.encode_unsigned(oracle.query_fee),
-      :binary.encode_unsigned(oracle.expires)
+      :binary.encode_unsigned(oracle.expires),
+      :binary.encode_unsigned(oracle.vm_version)
     ]
   end
 
   @spec decode_from_list(integer(), list()) :: {:ok, Oracle.t()} | {:error, reason()}
-  def decode_from_list(@version, [query_format, response_format, query_fee, expires]) do
+  def decode_from_list(@version, [query_format, response_format, query_fee, expires, vm_version]) do
     {:ok,
      %Oracle{
        owner: %Identifier{type: :oracle},
        query_format: query_format,
        response_format: response_format,
        query_fee: :binary.decode_unsigned(query_fee),
-       expires: :binary.decode_unsigned(expires)
+       expires: :binary.decode_unsigned(expires),
+       vm_version: :binary.decode_unsigned(vm_version)
      }}
   end
 

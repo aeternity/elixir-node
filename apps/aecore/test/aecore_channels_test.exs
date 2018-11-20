@@ -35,6 +35,8 @@ defmodule AecoreChannelTest do
   setup do
     %{public: pk1, secret: prk1} = :enacl.sign_keypair()
     %{public: pk2, secret: prk2} = :enacl.sign_keypair()
+    %{public: pk3, secret: prk3} = :enacl.sign_keypair()
+    %{public: pk4, secret: prk4} = :enacl.sign_keypair()
 
     Miner.mine_sync_block_to_chain()
 
@@ -42,7 +44,9 @@ defmodule AecoreChannelTest do
 
     TestUtils.spend_list(pubkey, privkey, [
       {pk1, 200},
-      {pk2, 200}
+      {pk2, 200},
+      {pk3, 200},
+      {pk4, 200}
     ])
 
     TestUtils.assert_transactions_mined()
@@ -59,7 +63,11 @@ defmodule AecoreChannelTest do
       pk1: pk1,
       sk1: prk1,
       pk2: pk2,
-      sk2: prk2
+      sk2: prk2,
+      pk3: pk3,
+      sk3: prk3,
+      pk4: pk4,
+      sk4: prk4
     }
   end
 
@@ -620,8 +628,13 @@ defmodule AecoreChannelTest do
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
 
     tmp_id = <<123>>
-    assert :ok == call_s1({:initialize, tmp_id, ctx.pk1, ctx.pk2, :initiator, 10})
-    assert :ok == call_s2({:initialize, tmp_id, ctx.pk1, ctx.pk2, :responder, 10})
+
+    assert :ok ==
+             call_s1({:initialize, tmp_id, ctx.pk1, ctx.pk2, [ctx.pk3, ctx.pk4], :initiator, 10})
+
+    assert :ok ==
+             call_s2({:initialize, tmp_id, ctx.pk1, ctx.pk2, [ctx.pk3, ctx.pk4], :responder, 10})
+
     {:ok, id, half_open_tx} = call_s1({:open, tmp_id, 150, 150, 2, 10, 1, ctx.sk1})
     assert :awaiting_full_tx == get_fsm_state_s1(id)
     {:ok, id2, open_tx} = call_s2({:sign_open, tmp_id, 150, 150, 2, half_open_tx, ctx.sk2})
@@ -634,6 +647,7 @@ defmodule AecoreChannelTest do
     TestUtils.assert_transactions_mined()
     assert ChannelStateTree.get(Chain.chain_state().channels, id) != :none
     assert ChannelStateTree.get(Chain.chain_state().channels, id).lock_period == 2
+    assert ChannelStateTree.get(Chain.chain_state().channels, id).delegates == [ctx.pk3, ctx.pk4]
 
     TestUtils.assert_balance(ctx.pk1, 40)
     TestUtils.assert_balance(ctx.pk2, 50)
