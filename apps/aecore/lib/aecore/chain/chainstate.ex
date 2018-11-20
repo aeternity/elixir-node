@@ -69,7 +69,8 @@ defmodule Aecore.Chain.Chainstate do
     updated_chainstate =
       case block do
         %KeyBlock{header: %KeyHeader{}} ->
-          Call.prune_calls(chainstate, block_height)
+          chainstate_pruned_calls = Call.prune_calls(chainstate, block_height)
+          Oracle.remove_expired(chainstate_pruned_calls, block_height)
 
         %MicroBlock{txs: txs} ->
           Enum.reduce_while(txs, chainstate, fn tx, chainstate_acc ->
@@ -84,8 +85,8 @@ defmodule Aecore.Chain.Chainstate do
       end
 
     case updated_chainstate do
-      %Chainstate{} = new_chainstate ->
-        {:ok, Oracle.remove_expired(new_chainstate, block_height)}
+      %Chainstate{} ->
+        {:ok, updated_chainstate}
 
       error ->
         {:error, error}
