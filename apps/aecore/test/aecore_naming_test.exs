@@ -37,7 +37,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "test naming workflow", setup do
     Miner.mine_sync_block_to_chain()
-    pre_claim = Account.pre_claim("test.aet", 123, 5)
+    pre_claim = Account.pre_claim("test.test", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -47,35 +47,35 @@ defmodule AecoreNamingTest do
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
     assert {:ok, first_name_pre_claim.hash.value} ==
-             NameCommitment.commitment_hash("test.aet", 123)
+             NameCommitment.commitment_hash("test.test", 123)
 
     assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
-    Account.claim("test.aet", 123, 5)
+    Account.claim("test.test", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
 
     assert 1 == naming_state_2 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
+    {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.test")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
 
-    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_claim.owner == elem(Keys.keypair(:sign), 0)
 
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == "[]"
 
-    Account.name_update("test.aet", "{\"test\": 2}", 5, 5000, 50)
+    Account.name_update("test.test", "{\"test\": 2}", 5, 5000, 50)
     Miner.mine_sync_block_to_chain()
 
     naming_state_3 = Chain.chain_state().naming
 
     assert 1 == naming_state_3 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
+    {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.test")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
 
-    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_update.owner == elem(Keys.keypair(:sign), 0)
 
     assert first_name_update.status == :claimed
@@ -83,7 +83,7 @@ defmodule AecoreNamingTest do
 
     transfer_to_priv = setup.a_priv_key
     transfer_to_pub = setup.a_pub_key
-    transfer = Account.name_transfer("test.aet", transfer_to_pub, 5)
+    transfer = Account.name_transfer("test.test", transfer_to_pub, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_4 = Chain.chain_state().naming
@@ -91,7 +91,7 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_4 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     hash_1 = transfer.data.payload.hash.value
     first_name_transfer = NamingStateTree.get(naming_state_4, hash_1)
-    assert {:ok, first_name_transfer.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_transfer.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_transfer.owner == transfer_to_pub
 
     assert first_name_transfer.status == :claimed
@@ -103,7 +103,7 @@ defmodule AecoreNamingTest do
 
     next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
 
-    revoke = Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 5, next_nonce)
+    revoke = Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.test", 5, next_nonce)
 
     Miner.mine_sync_block_to_chain()
 
@@ -112,7 +112,7 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_5 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     hash_2 = revoke.data.payload.hash.value
     first_name_revoke = NamingStateTree.get(naming_state_5, hash_2)
-    assert {:ok, first_name_revoke.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_revoke.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_revoke.owner == transfer_to_pub
 
     assert first_name_revoke.status == :revoked
@@ -121,11 +121,11 @@ defmodule AecoreNamingTest do
 
   @tag :naming
   test "not pre-claimed name not claimable" do
-    Account.claim("test.aet", 123, 5)
+    Account.claim("test.test", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
+    {:ok, claim_hash} = NameUtil.normalized_namehash("test.test")
     claim_2 = NamingStateTree.get(naming_state, claim_hash)
     assert :none == claim_2
   end
@@ -133,7 +133,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "name not claimable with incorrect salt" do
     Miner.mine_sync_block_to_chain()
-    pre_claim = Account.pre_claim("test.aet", 123, 5)
+    pre_claim = Account.pre_claim("test.test", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -143,11 +143,11 @@ defmodule AecoreNamingTest do
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
     assert {:ok, first_name_pre_claim.hash.value} ==
-             NameCommitment.commitment_hash("test.aet", 123)
+             NameCommitment.commitment_hash("test.test", 123)
 
     assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
-    Account.claim("test.aet", 321, 5)
+    Account.claim("test.test", 321, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
@@ -165,7 +165,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "name not claimable from different account", setup do
     Miner.mine_sync_block_to_chain()
-    pre_claim = Account.pre_claim("test.aet", 123, 5)
+    pre_claim = Account.pre_claim("test.test", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -175,7 +175,7 @@ defmodule AecoreNamingTest do
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
     assert {:ok, first_name_pre_claim.hash.value} ==
-             NameCommitment.commitment_hash("test.aet", 123)
+             NameCommitment.commitment_hash("test.test", 123)
 
     assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
@@ -183,13 +183,13 @@ defmodule AecoreNamingTest do
     claim_pub = setup.a_pub_key
 
     next_nonce = Account.nonce(Chain.chain_state().accounts, claim_pub) + 1
-    Account.claim(claim_pub, claim_priv, "test.aet", 123, 5, next_nonce)
+    Account.claim(claim_pub, claim_priv, "test.test", 123, 5, next_nonce)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
 
     assert 1 == naming_state_2 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
+    {:ok, claim_hash} = NameUtil.normalized_namehash("test.test")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash)
     assert :none == first_name_claim
 
@@ -204,7 +204,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "name not updatable from different account", setup do
     Miner.mine_sync_block_to_chain()
-    pre_claim = Account.pre_claim("test.aet", 123, 5)
+    pre_claim = Account.pre_claim("test.test", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -214,20 +214,20 @@ defmodule AecoreNamingTest do
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
     assert {:ok, first_name_pre_claim.hash.value} ==
-             NameCommitment.commitment_hash("test.aet", 123)
+             NameCommitment.commitment_hash("test.test", 123)
 
     assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
-    Account.claim("test.aet", 123, 5)
+    Account.claim("test.test", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
 
     assert 1 == naming_state_2 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
+    {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.test")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
 
-    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_claim.owner == elem(Keys.keypair(:sign), 0)
 
     assert first_name_claim.status == :claimed
@@ -240,7 +240,7 @@ defmodule AecoreNamingTest do
     Account.name_update(
       update_pub,
       update_priv,
-      "test.aet",
+      "test.test",
       "{\"test\": 2}",
       5,
       next_nonce,
@@ -253,10 +253,10 @@ defmodule AecoreNamingTest do
     naming_state_3 = Chain.chain_state().naming
 
     assert 1 == naming_state_3 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
+    {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.test")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
 
-    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_update.owner == elem(Keys.keypair(:sign), 0)
 
     assert first_name_update.status == :claimed
@@ -266,7 +266,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "name not transferable from different account", setup do
     Miner.mine_sync_block_to_chain()
-    pre_claim = Account.pre_claim("test.aet", 123, 5)
+    pre_claim = Account.pre_claim("test.test", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -276,35 +276,35 @@ defmodule AecoreNamingTest do
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
     assert {:ok, first_name_pre_claim.hash.value} ==
-             NameCommitment.commitment_hash("test.aet", 123)
+             NameCommitment.commitment_hash("test.test", 123)
 
     assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
-    Account.claim("test.aet", 123, 5)
+    Account.claim("test.test", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
 
     assert 1 == naming_state_2 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
+    {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.test")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
 
-    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_claim.owner == elem(Keys.keypair(:sign), 0)
 
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == "[]"
 
-    Account.name_update("test.aet", "{\"test\": 2}", 5, 5000, 50)
+    Account.name_update("test.test", "{\"test\": 2}", 5, 5000, 50)
     Miner.mine_sync_block_to_chain()
 
     naming_state_3 = Chain.chain_state().naming
 
     assert 1 == naming_state_3 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
+    {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.test")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
 
-    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_update.owner == elem(Keys.keypair(:sign), 0)
 
     assert first_name_update.status == :claimed
@@ -320,7 +320,7 @@ defmodule AecoreNamingTest do
       Account.name_transfer(
         transfer_from_pub,
         transfer_from_priv,
-        "test.aet",
+        "test.test",
         transfer_to_pub,
         5,
         next_nonce
@@ -334,7 +334,7 @@ defmodule AecoreNamingTest do
     hash = transfer.data.payload.hash.value
     first_name_transfer = NamingStateTree.get(naming_state_4, hash)
 
-    assert {:ok, first_name_transfer.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_transfer.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_transfer.owner == elem(Keys.keypair(:sign), 0)
 
     assert first_name_transfer.status == :claimed
@@ -344,7 +344,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "name not revokable from different account", setup do
     Miner.mine_sync_block_to_chain()
-    pre_claim = Account.pre_claim("test.aet", 123, 5)
+    pre_claim = Account.pre_claim("test.test", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -354,41 +354,41 @@ defmodule AecoreNamingTest do
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
     assert {:ok, first_name_pre_claim.hash.value} ==
-             NameCommitment.commitment_hash("test.aet", 123)
+             NameCommitment.commitment_hash("test.test", 123)
 
     assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
-    Account.claim("test.aet", 123, 5)
+    Account.claim("test.test", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
 
     assert 1 == naming_state_2 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
+    {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.test")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
 
-    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_claim.owner == elem(Keys.keypair(:sign), 0)
 
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == "[]"
 
-    Account.name_update("test.aet", "{\"test\": 2}", 5, 5000, 50)
+    Account.name_update("test.test", "{\"test\": 2}", 5, 5000, 50)
     Miner.mine_sync_block_to_chain()
 
     naming_state_3 = Chain.chain_state().naming
 
     assert 1 == naming_state_3 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
+    {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.test")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
-    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_update.owner == elem(Keys.keypair(:sign), 0)
 
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == "{\"test\": 2}"
 
     transfer_to_pub = setup.a_pub_key
-    transfer = Account.name_transfer("test.aet", transfer_to_pub, 5)
+    transfer = Account.name_transfer("test.test", transfer_to_pub, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_4 = Chain.chain_state().naming
@@ -396,7 +396,7 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_4 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     hash_1 = transfer.data.payload.hash.value
     first_name_transfer = NamingStateTree.get(naming_state_4, hash_1)
-    assert {:ok, first_name_transfer.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_transfer.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_transfer.owner == transfer_to_pub
 
     assert first_name_transfer.status == :claimed
@@ -410,7 +410,8 @@ defmodule AecoreNamingTest do
     transfer_from_pub = setup.b_pub_key
     next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_from_pub) + 1
 
-    revoke = Account.name_revoke(transfer_from_pub, transfer_from_priv, "test.aet", 5, next_nonce)
+    revoke =
+      Account.name_revoke(transfer_from_pub, transfer_from_priv, "test.test", 5, next_nonce)
 
     Miner.mine_sync_block_to_chain()
 
@@ -419,7 +420,7 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_5 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     hash_2 = revoke.data.payload.hash.value
     first_name_revoke = NamingStateTree.get(naming_state_5, hash_2)
-    assert {:ok, first_name_revoke.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert {:ok, first_name_revoke.hash.value} == NameUtil.normalized_namehash("test.test")
     assert first_name_revoke.owner == transfer_to_pub
 
     assert first_name_revoke.status == :claimed

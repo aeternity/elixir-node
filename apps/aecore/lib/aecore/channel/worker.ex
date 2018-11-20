@@ -123,14 +123,24 @@ defmodule Aecore.Channel.Worker do
           binary(),
           Keys.pubkey(),
           Keys.pubkey(),
+          list(Keys.pubkey()),
           role(),
           non_neg_integer()
         ) :: :ok | error()
-  def initialize(temporary_id, initiator_pubkey, responder_pubkey, role, channel_reserve)
-      when is_binary(temporary_id) and is_atom(role) and is_integer(channel_reserve) do
+  def initialize(
+        temporary_id,
+        initiator_pubkey,
+        responder_pubkey,
+        delegates,
+        role,
+        channel_reserve
+      )
+      when is_binary(temporary_id) and is_atom(role) and is_integer(channel_reserve) and
+             is_list(delegates) do
     GenServer.call(
       __MODULE__,
-      {:initialize, temporary_id, initiator_pubkey, responder_pubkey, role, channel_reserve}
+      {:initialize, temporary_id, initiator_pubkey, responder_pubkey, delegates, role,
+       channel_reserve}
     )
   end
 
@@ -362,7 +372,8 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call(
-        {:initialize, temporary_id, initiator_pubkey, responder_pubkey, role, channel_reserve},
+        {:initialize, temporary_id, initiator_pubkey, responder_pubkey, delegates, role,
+         channel_reserve},
         _from,
         state
       ) do
@@ -371,6 +382,7 @@ defmodule Aecore.Channel.Worker do
         temporary_id,
         initiator_pubkey,
         responder_pubkey,
+        delegates,
         channel_reserve,
         role
       )
