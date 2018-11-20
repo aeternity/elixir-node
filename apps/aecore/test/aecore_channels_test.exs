@@ -529,12 +529,14 @@ defmodule AecoreChannelTest do
     assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
              true
 
-    # Solo close
-    :ok = call_s1({:solo_close, id, 10, 3, ctx.sk1})
-    TestUtils.assert_transactions_mined()
+    # Solo close should fail as it has sequence equal to the most recent state
+    channel_solo_close_tx = prepare_solo_close_tx(id, &call_s1/1, 5, 3, ctx.sk1)
+    assert_custom_tx_fails(channel_solo_close_tx)
 
     assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
-             false
+             true
+
+    # In order to solo close the channel now we need to force progress
   end
 
   @tag :channels

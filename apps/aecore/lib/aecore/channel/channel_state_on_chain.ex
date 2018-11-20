@@ -271,7 +271,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
              inspect(Poi.calculate_root_hash(poi))
            }"}
 
-        channel.sequence > offchain_tx.sequence ->
+        channel.sequence >= offchain_tx.sequence ->
           {:error,
            "#{__MODULE__}: OffChainTx is too old, expected newer than #{channel.sequence}, got #{
              offchain_tx.sequence
@@ -485,7 +485,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     %ChannelStateOnChain{
       channel
       | sequence: sequence,
-        state_hash: state_hash
+        state_hash: state_hash,
+        solo_sequence: 0
     }
   end
 
