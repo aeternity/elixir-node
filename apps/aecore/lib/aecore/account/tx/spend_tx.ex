@@ -83,7 +83,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %SpendTx{receiver: receiver, amount: amount, version: version, payload: payload},
-        %DataTx{senders: senders}
+        %DataTx{senders: senders, ttl: ttl}
       ) do
     cond do
       !Identifier.valid?(receiver, :account) ->

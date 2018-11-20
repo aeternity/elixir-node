@@ -9,6 +9,7 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Oracle
   alias Aecore.Tx.DataTx
   alias Aecore.Keys
   alias Aecore.Account.Account
@@ -94,16 +95,21 @@ defmodule AecoreTxsPoolTest do
              )
   end
 
-  # @tag timeout: 20_000
-  # @tag :txs_pool
-  # test "remove expired transactions by ttl", wallet do
-  #   Pool.get_and_empty_pool()
+  @tag timeout: 20_000
+  @tag :txs_pool
+  test "restrict expired transactions by ttl", wallet do
+    Pool.get_and_empty_pool()
 
-  #   nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
+    for n <- 1..5 do
+      Miner.mine_sync_block_to_chain()
+    end
 
-  #   for n <- 1..10 do
-  #     Miner.mine_sync_block_to_chain()
-  #   end
+    top_height = Chain.top_height()
 
-  # end
+    assert top_height == 5
+
+    Oracle.register("{foo: bar}", "boolean()", 5, 5, %{ttl: 100, type: :relative}, 3)
+
+    assert Enum.count(Pool.get_pool()) == 0
+  end
 end

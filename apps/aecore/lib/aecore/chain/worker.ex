@@ -351,7 +351,7 @@ defmodule Aecore.Chain.Worker do
       ) do
     Enum.each(txs, fn tx -> Pool.remove_transaction(tx) end)
 
-    Pool.garbage_collection(top_height)
+    Pool.garbage_collection(height)
 
     new_block_hash = Header.hash(header)
 
