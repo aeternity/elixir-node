@@ -110,6 +110,6 @@ defmodule AecoreTxsPoolTest do
 
     Oracle.register("{foo: bar}", "boolean()", 5, 5, %{ttl: 100, type: :relative}, 3)
 
-    assert Enum.count(Pool.get_pool()) == 0
+    assert Enum.empty?(Pool.get_pool()) == true
   end
 end
