@@ -45,7 +45,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
           mutually_signed_tx: list(ChannelOffChainTx.t()),
           highest_half_signed_tx: ChannelOffChainTx.t() | nil,
           channel_reserve: non_neg_integer(),
-          offchain_chainstate: Chainstate.t() | nil
+          offchain_chainstate: Chainstate.t() | nil,
+          snapshot_sequence: non_neg_integer()
         }
 
   @typedoc "Type of the errors returned by functions in this module"
@@ -61,7 +62,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
     :channel_reserve,
     mutually_signed_tx: [],
     highest_half_signed_tx: nil,
-    offchain_chainstate: nil
+    offchain_chainstate: nil,
+    snapshot_sequence: 0
   ]
 
   require Logger
@@ -993,13 +995,23 @@ defmodule Aecore.Channel.ChannelStatePeer do
           Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def solo_close(
-        %ChannelStatePeer{channel_id: channel_id, mutually_signed_tx: [most_recent_tx | _]} =
-          peer_state,
+        %ChannelStatePeer{
+          channel_id: channel_id,
+          mutually_signed_tx: [most_recent_tx | _],
+          snapshot_sequence: snapshot_sequence
+        } = peer_state,
         fee,
         nonce,
         priv_key
       ) do
     new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
+    # If we are closing with a recently snapshoted state we MUST use the state saved on chain
+    offchain_tx =
+      if snapshot_sequence == ChannelStatePeer.sequence(peer_state) do
+        :empty
+      else
+        ChannelTransaction.dispute_payload(most_recent_tx)
+      end
 
     data =
       DataTx.init(
@@ -1007,7 +1019,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         %{
           channel_id: channel_id,
           poi: dispute_poi_for_latest_state(peer_state),
-          offchain_tx: ChannelTransaction.dispute_payload(most_recent_tx)
+          offchain_tx: offchain_tx
         },
         our_pubkey(peer_state),
         fee,
@@ -1102,23 +1114,28 @@ defmodule Aecore.Channel.ChannelStatePeer do
         %ChannelStatePeer{
           fsm_state: state,
           channel_id: channel_id,
-          mutually_signed_tx: [%ChannelOffChainTx{} = offchain_tx | _]
+          mutually_signed_tx: [%ChannelOffChainTx{} = offchain_tx | _],
+          snapshot_sequence: snapshot_sequence
         } = peer_state,
         fee,
         nonce,
         priv_key
       )
       when state in [:awaiting_full_tx, :awaiting_tx_confirmed, :open] do
-    data =
-      DataTx.init(
-        ChannelSnapshotSoloTx,
-        %{channel_id: channel_id, offchain_tx: offchain_tx},
-        our_pubkey(peer_state),
-        fee,
-        nonce
-      )
+    if snapshot_sequence < ChannelStatePeer.sequence(peer_state) do
+      data =
+        DataTx.init(
+          ChannelSnapshotSoloTx,
+          %{channel_id: channel_id, offchain_tx: offchain_tx},
+          our_pubkey(peer_state),
+          fee,
+          nonce
+        )
 
-    SignedTx.sign_tx(data, priv_key)
+      SignedTx.sign_tx(data, priv_key)
+    else
+      {:error, "#{__MODULE__}: We cannot snapshot an already snapshoted state."}
+    end
   end
 
   def snapshot(
@@ -1135,6 +1152,19 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   def snapshot(%ChannelStatePeer{fsm_state: state}, _, _, _) do
     {:error, "#{__MODULE__}: Invalid peer state: #{state}"}
+  end
+
+  @doc """
+    Notifies the channel that a snapshot tx was mined. MUST only be called when ChannelSnapshotSoloTx was mined.
+  """
+  @spec snapshot_mined(ChannelStatePeer.t(), SignedTx.t()) :: ChannelStatePeer.t()
+  def snapshot_mined(%ChannelStatePeer{} = peer_state, %SignedTx{
+        data: %DataTx{
+          type: ChannelSnapshotSoloTx,
+          payload: %ChannelSnapshotSoloTx{offchain_tx: %ChannelOffChainTx{sequence: sequence}}
+        }
+      }) do
+    %ChannelStatePeer{peer_state | snapshot_sequence: sequence}
   end
 
   @doc """

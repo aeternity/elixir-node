@@ -11,7 +11,8 @@ defmodule Aecore.Channel.Worker do
     ChannelCloseSoloTx,
     ChannelSlashTx,
     ChannelSettleTx,
-    ChannelCreateTx
+    ChannelCreateTx,
+    ChannelSnapshotSoloTx
   }
 
   alias Aecore.Keys
@@ -367,6 +368,14 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
+  Notifies the channel manager about a mined snapshot tx.
+  """
+  @spec snapshot_mined(SignedTx.t()) :: :ok | error()
+  def snapshot_mined(%SignedTx{} = snapshot_tx) do
+    GenServer.call(__MODULE__, {:snapshot_mined, snapshot_tx})
+  end
+
+  @doc """
   Returns a map of all ChannelStatePeer objects.
   """
   @spec get_all_channels :: %{binary() => ChannelStatePeer.t()}
@@ -696,6 +705,21 @@ defmodule Aecore.Channel.Worker do
 
       :error ->
         {:reply, {:error, "#{__MODULE__}: Pool error"}, state}
+    end
+  end
+
+  def handle_call(
+        {:snapshot_mined, %SignedTx{data: %DataTx{payload: payload}} = tx},
+        _from,
+        state
+      ) do
+    %ChannelSnapshotSoloTx{channel_id: channel_id} = payload
+
+    if Map.has_key?(state, channel_id) do
+      new_peer_state = state |> Map.get(channel_id) |> ChannelStatePeer.snapshot_mined(tx)
+      {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
+    else
+      {:reply, :ok, state}
     end
   end
 

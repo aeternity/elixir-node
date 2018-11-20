@@ -18,6 +18,9 @@ defmodule AecoreChannelTest do
     ChannelTransaction
   }
 
+  alias Aecore.Channel.Tx.ChannelCloseSoloTx
+  alias Aecore.Tx.DataTx
+
   alias Aeutil.PatriciaMerkleTree
 
   @s1_name {:global, :Channels_S1}
@@ -481,11 +484,11 @@ defmodule AecoreChannelTest do
     assert_offchain_state(id, 270, 30, 3)
 
     # Snapshot
-    :ok = call_s1({:snapshot, id, 10, 2, ctx.sk1})
+    channel_snapshot_solo_tx2 = prepare_snapshot(id, &call_s1/1, 10, 2, ctx.sk1)
+    assert_custom_tx_succeeds(channel_snapshot_solo_tx2)
+    :ok = call_s1({:snapshot_mined, channel_snapshot_solo_tx2})
     assert :open == get_fsm_state_s1(id)
     assert :open == get_fsm_state_s2(id)
-
-    TestUtils.assert_transactions_mined()
 
     channel = ChannelStateTree.get(Chain.chain_state().channels, id)
     assert channel.sequence == 3
@@ -497,8 +500,8 @@ defmodule AecoreChannelTest do
 
     # Check if snapshot with old state fails
     assert_custom_tx_fails(channel_snapshot_solo_tx)
-    channel_snapshot_solo_tx2 = prepare_snapshot(id, &call_s2/1, 5, 1, ctx.sk2)
-    assert_custom_tx_fails(channel_snapshot_solo_tx2)
+    channel_snapshot_solo_tx3 = prepare_snapshot(id, &call_s2/1, 5, 1, ctx.sk2)
+    assert_custom_tx_fails(channel_snapshot_solo_tx3)
 
     # Close channel
     {:ok, close_tx} = call_s1({:close, id, {5, 5}, 3, ctx.sk1})
@@ -531,20 +534,24 @@ defmodule AecoreChannelTest do
     assert_offchain_state(id, 100, 200, 2)
 
     # Snapshot
-    :ok = call_s1({:snapshot, id, 10, 2, ctx.sk1})
-    TestUtils.assert_transactions_mined()
+    channel_snapshot_solo_tx = prepare_snapshot(id, &call_s1/1, 10, 2, ctx.sk1)
+    assert_custom_tx_succeeds(channel_snapshot_solo_tx)
+    :ok = call_s1({:snapshot_mined, channel_snapshot_solo_tx})
 
     assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
              true
 
-    # Solo close should fail as it has sequence equal to the most recent state
+    # Solo close succeeds
     channel_solo_close_tx = prepare_solo_close_tx(id, &call_s1/1, 5, 3, ctx.sk1)
-    assert_custom_tx_fails(channel_solo_close_tx)
+
+    # Assert no payload as the most recent state was a snapshot
+    %SignedTx{data: %DataTx{payload: %ChannelCloseSoloTx{offchain_tx: :empty}}} =
+      channel_solo_close_tx
+
+    assert_custom_tx_succeeds(channel_solo_close_tx)
 
     assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
-             true
-
-    # In order to solo close the channel now we need to force progress
+             false
   end
 
   @tag :channels
