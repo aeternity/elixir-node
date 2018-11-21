@@ -10,7 +10,8 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
     ChannelCreateUpdate,
     ChannelTransferUpdate,
     ChannelDepositUpdate,
-    ChannelWithdrawUpdate
+    ChannelWithdrawUpdate,
+    ChannelCreateContract
   }
 
   @typedoc """
@@ -21,6 +22,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
           | ChannelTransferUpdate.t()
           | ChannelDepositUpdate.t()
           | ChannelWithdrawUpdate.t()
+          | ChannelCreateContract.t()
 
   @typedoc """
   The type of errors returned by the functions in this module
@@ -69,6 +71,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   def tag_to_module(0), do: {:ok, ChannelTransferUpdate}
   def tag_to_module(1), do: {:ok, ChannelDepositUpdate}
   def tag_to_module(2), do: {:ok, ChannelWithdrawUpdate}
+  def tag_to_module(573), do: {:ok, ChannelCreateContract}
 
   def tag_to_module(tag), do: {:error, "#{__MODULE__} Error: Invalid update tag: #{inspect(tag)}"}
 
@@ -79,6 +82,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   def module_to_tag(ChannelTransferUpdate), do: {:ok, 0}
   def module_to_tag(ChannelDepositUpdate), do: {:ok, 1}
   def module_to_tag(ChannelWithdrawUpdate), do: {:ok, 2}
+  def module_to_tag(ChannelCreateContract), do: {:ok, 573}
 
   def module_to_tag(module),
     do: {:error, "#{__MODULE__} Error: Unserializable module: #{inspect(module)}"}
