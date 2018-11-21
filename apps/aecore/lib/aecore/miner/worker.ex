@@ -304,7 +304,6 @@ defmodule Aecore.Miner.Worker do
 
   @spec generate_and_add_micro_block(
           Chainstate.t(),
-          non_neg_integer(),
           binary(),
           binary(),
           non_neg_integer(),
@@ -312,7 +311,6 @@ defmodule Aecore.Miner.Worker do
         ) :: :ok | {:error, String.t()}
   def generate_and_add_micro_block(
         chain_state,
-        top_height,
         prev_hash,
         prev_key_hash,
         last_time,
@@ -321,7 +319,7 @@ defmodule Aecore.Miner.Worker do
     txs_list = get_pool_values()
     ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
-    candidate_height = top_height
+    candidate_height = Chain.top_height()
 
     valid_txs_by_chainstate =
       Chainstate.get_valid_txs(ordered_txs_list, chain_state, candidate_height)

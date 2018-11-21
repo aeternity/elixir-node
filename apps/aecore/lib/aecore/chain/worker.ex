@@ -392,7 +392,6 @@ defmodule Aecore.Chain.Worker do
       spawn(fn ->
         Miner.generate_and_add_micro_block(
           new_chain_state,
-          height,
           new_block_hash,
           new_block_key_hash,
           time,
