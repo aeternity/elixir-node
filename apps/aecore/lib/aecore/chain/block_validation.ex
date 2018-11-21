@@ -199,7 +199,8 @@ defmodule Aecore.Chain.BlockValidation do
     new_prev_key_hash == Header.top_key_block_hash(prev_header)
   end
 
-  @spec check_correct_height?(KeyBlock.t(), KeyBlock.t() | MicroHeader.t()) :: boolean()
+  @spec check_correct_height?(KeyBlock.t() | MicroBlock.t(), KeyBlock.t() | MicroBlock.t()) ::
+          boolean()
   defp check_correct_height?(%KeyBlock{header: %KeyHeader{height: new_block_height}}, %{
          header: %{height: previous_block_height}
        }) do
