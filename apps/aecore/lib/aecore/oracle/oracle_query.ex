@@ -3,7 +3,7 @@ defmodule Aecore.Oracle.OracleQuery do
   Module defining the structure of an OracleQuery
   """
 
-  alias Aecore.Oracle.OracleQuery
+  alias Aecore.Oracle.{Oracle, OracleQuery}
   alias Aecore.Keys
   alias Aeutil.Serialization
 
@@ -20,7 +20,7 @@ defmodule Aecore.Oracle.OracleQuery do
           oracle_address: binary(),
           query: binary(),
           response: map() | atom(),
-          response_ttl: integer(),
+          response_ttl: Oracle.relative_ttl(),
           sender_address: Keys.pubkey(),
           sender_nonce: integer()
         }
@@ -74,7 +74,7 @@ defmodule Aecore.Oracle.OracleQuery do
       serialized_has_response,
       serialized_response,
       :binary.encode_unsigned(expires),
-      :binary.encode_unsigned(response_ttl),
+      :binary.encode_unsigned(response_ttl.ttl),
       :binary.encode_unsigned(fee)
     ]
   end
@@ -111,7 +111,7 @@ defmodule Aecore.Oracle.OracleQuery do
        oracle_address: oracle_address,
        query: query,
        response: new_response,
-       response_ttl: :binary.decode_unsigned(response_ttl),
+       response_ttl: %{ttl: :binary.decode_unsigned(response_ttl), type: :relative},
        sender_address: sender_address,
        sender_nonce: :binary.decode_unsigned(sender_nonce)
      }}
