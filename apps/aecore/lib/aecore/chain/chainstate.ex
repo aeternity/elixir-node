@@ -5,10 +5,10 @@ defmodule Aecore.Chain.Chainstate do
 
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Genesis, KeyBlock, MicroBlock, KeyHeader}
+  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Contract.{Call, CallStateTree, ContractStateTree}
-  alias Aecore.Governance.{GenesisConstants, GovernanceConstants}
-  alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Governance.{GovernanceConstants}
   alias Aecore.Naming.NamingStateTree
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Tx.SignedTx
@@ -25,7 +25,6 @@ defmodule Aecore.Chain.Chainstate do
   @canonical_root_hash <<69, 176, 207, 194, 32, 206, 236, 91, 124, 28, 98, 196, 212, 25, 61, 56,
                          228, 235, 164, 142, 136, 21, 114, 156, 231, 95, 156, 10, 176, 228, 193,
                          192>>
-  @genesis_miner GenesisConstants.miner()
   @state_hash_bytes 32
 
   @type accounts :: AccountStateTree.accounts_state()
@@ -69,8 +68,10 @@ defmodule Aecore.Chain.Chainstate do
     updated_chainstate =
       case block do
         %KeyBlock{header: %KeyHeader{}} ->
-          chainstate_pruned_calls = Call.prune_calls(chainstate, block_height)
-          Oracle.remove_expired(chainstate_pruned_calls, block_height)
+          chainstate
+          |> Call.prune_calls(block_height)
+          |> Oracle.remove_expired(block_height)
+          |> calculate_miner_reward_chain_state(block_height)
 
         %MicroBlock{txs: txs} ->
           Enum.reduce_while(txs, chainstate, fn tx, chainstate_acc ->
@@ -105,23 +106,51 @@ defmodule Aecore.Chain.Chainstate do
     }
   end
 
-  defp calculate_miner_reward_chain_state(txs, chainstate, block_height, miner) do
-    case miner do
-      @genesis_miner ->
-        chainstate
+  defp calculate_miner_reward_chain_state(chainstate, block_height) do
+    if block_height > GovernanceConstants.beneficiary_reward_lock_time() do
+      current_generation_beneficiary =
+        block_height |> Chain.generation_fees() |> Map.keys() |> List.first()
 
-      miner_pubkey ->
-        accounts_state_with_coinbase =
-          AccountStateTree.update(chainstate.accounts, miner_pubkey, fn acc ->
+      current_generation_fees =
+        block_height |> Chain.generation_fees() |> Map.get(current_generation_beneficiary)
+
+      next_generation_beneficiary =
+        (block_height + 1) |> Chain.generation_fees() |> Map.keys() |> List.first()
+
+      accounts_with_current_beneficiary_reward =
+        AccountStateTree.update(chainstate.accounts, current_generation_beneficiary, fn acc ->
+          Account.apply_transfer!(
+            acc,
+            block_height,
+            round(
+              GovernanceConstants.coinbase_transaction_amount() +
+                current_generation_fees *
+                  GovernanceConstants.current_generation_fee_reward_multiplier()
+            )
+          )
+        end)
+
+      # the next beneficiary takes 60% of the fees from the generation that is previous to his 
+      # (that's why the constant is named previous_generation_fee_reward_multiplier)
+      accounts_with_next_beneficiary_reward =
+        AccountStateTree.update(
+          accounts_with_current_beneficiary_reward,
+          next_generation_beneficiary,
+          fn acc ->
             Account.apply_transfer!(
               acc,
               block_height,
-              GovernanceConstants.coinbase_transaction_amount() +
-                Miner.calculate_miner_reward(txs, chainstate)
+              round(
+                current_generation_fees *
+                  GovernanceConstants.previous_generation_fee_reward_multiplier()
+              )
             )
-          end)
+          end
+        )
 
-        %{chainstate | accounts: accounts_state_with_coinbase}
+      %{chainstate | accounts: accounts_with_next_beneficiary_reward}
+    else
+      chainstate
     end
   end
 

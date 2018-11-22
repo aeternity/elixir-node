@@ -13,6 +13,9 @@ defmodule Aecore.Governance.GovernanceConstants do
   @expected_mine_rate_ms 300_000
 
   @coinbase_transaction_amount 10_000_000_000_000_000_000
+  @current_generation_fee_reward_multiplier 0.4
+  @previous_generation_fee_reward_multiplier 0.6
+  @beneficiary_reward_lock_time 3
 
   @minimum_fee 1
 
@@ -60,6 +63,15 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @spec coinbase_transaction_amount :: non_neg_integer()
   def coinbase_transaction_amount, do: @coinbase_transaction_amount
+
+  @spec current_generation_fee_reward_multiplier :: float()
+  def current_generation_fee_reward_multiplier, do: @current_generation_fee_reward_multiplier
+
+  @spec previous_generation_fee_reward_multiplier :: float()
+  def previous_generation_fee_reward_multiplier, do: @previous_generation_fee_reward_multiplier
+
+  @spec beneficiary_reward_lock_time :: non_neg_integer()
+  def beneficiary_reward_lock_time, do: @beneficiary_reward_lock_time
 
   @spec minimum_fee :: non_neg_integer()
   def minimum_fee, do: @minimum_fee

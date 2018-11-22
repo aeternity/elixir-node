@@ -19,6 +19,7 @@ defmodule Aecore.Chain.Worker do
     KeyBlock,
     KeyHeader,
     MicroBlock,
+    MicroHeader,
     BlockValidation,
     Block,
     Header,
@@ -65,7 +66,8 @@ defmodule Aecore.Chain.Worker do
        top_hash: genesis_block_hash,
        top_height: 0,
        total_diff: Persistence.get_total_difficulty(),
-       node_is_leader: false
+       node_is_leader: false,
+       generation_fees: %{}
      }, 0}
   end
 
@@ -261,15 +263,24 @@ defmodule Aecore.Chain.Worker do
              prev_block_chain_state,
              blocks_for_target_calculation
            ) do
-      add_validated_block(block, new_chain_state, loop_micro_block)
+      add_validated_block(block, prev_block_chain_state, new_chain_state, loop_micro_block)
     else
-      err -> err
+      err ->
+        err
     end
   end
 
-  @spec add_validated_block(KeyBlock.t() | MicroBlock.t(), Chainstate.t(), boolean()) :: :ok
-  defp add_validated_block(block, chain_state, loop_micro_block) do
-    GenServer.call(__MODULE__, {:add_validated_block, block, chain_state, loop_micro_block})
+  @spec add_validated_block(
+          KeyBlock.t() | MicroBlock.t(),
+          Chainstate.t(),
+          Chainstate.t(),
+          boolean()
+        ) :: :ok
+  defp add_validated_block(block, prev_chain_state, chain_state, loop_micro_block) do
+    GenServer.call(
+      __MODULE__,
+      {:add_validated_block, block, prev_chain_state, chain_state, loop_micro_block}
+    )
   end
 
   @spec chain_state(binary()) :: {:ok, Chainstate.t()} | {:error, String.t()}
@@ -289,6 +300,10 @@ defmodule Aecore.Chain.Worker do
   @spec chain_state() :: Chainstate.t()
   def chain_state do
     top_block_chain_state()
+  end
+
+  def generation_fees(height) do
+    GenServer.call(__MODULE__, {:generation_fees, height})
   end
 
   @spec longest_blocks_chain() :: list(Block.t())
@@ -360,18 +375,25 @@ defmodule Aecore.Chain.Worker do
   def handle_call(
         {:add_validated_block,
          %{
-           header: %{prev_hash: prev_hash, height: height, time: time} = header
-         } = new_block, new_chain_state, loop_micro_blocks},
+           header: %{prev_hash: prev_hash, height: height} = header
+         } = new_block, prev_chain_state, new_chain_state, loop_micro_blocks},
         _from,
         %{
           blocks_data_map: blocks_data_map,
           top_height: top_height,
           total_diff: total_diff,
-          node_is_leader: node_is_leader
+          node_is_leader: node_is_leader,
+          generation_fees: generation_fees
         } = state
       ) do
+    block_is_genesis = new_block == Genesis.block()
+
+    new_generation_fees =
+      generation_fees
+      |> clear_generation_fees(height)
+      |> update_generation_fees(new_block, prev_chain_state)
+
     new_block_hash = HeaderUtils.hash(header)
-    new_block_key_hash = HeaderUtils.top_key_block_hash(header)
 
     {new_total_diff, new_node_is_leader} =
       case new_block do
@@ -390,14 +412,7 @@ defmodule Aecore.Chain.Worker do
 
     if loop_micro_blocks && new_node_is_leader do
       spawn(fn ->
-        Miner.generate_and_add_micro_block(
-          new_chain_state,
-          height,
-          new_block_hash,
-          new_block_key_hash,
-          time,
-          loop_micro_blocks
-        )
+        Miner.generate_and_add_micro_block(loop_micro_blocks)
       end)
     end
 
@@ -425,10 +440,11 @@ defmodule Aecore.Chain.Worker do
     state_update = %{
       state
       | blocks_data_map: hundred_blocks_data_map,
-        node_is_leader: new_node_is_leader
+        node_is_leader: new_node_is_leader,
+        generation_fees: new_generation_fees
     }
 
-    if top_height <= height do
+    if top_height <= height && !block_is_genesis do
       Persistence.batch_write(%{
         # Transform from chain state
         :chain_state => %{
@@ -474,6 +490,10 @@ defmodule Aecore.Chain.Worker do
     {:reply, blocks_data_map, state}
   end
 
+  def handle_call({:generation_fees, height}, _from, %{generation_fees: generation_fees} = state) do
+    {:reply, generation_fees[height], state}
+  end
+
   def handle_info(
         :timeout,
         %{top_hash: top_hash, top_height: top_height, blocks_data_map: blocks_data_map} = state
@@ -493,7 +513,7 @@ defmodule Aecore.Chain.Worker do
       genesis_chainstate = blocks_data_map[block_hash].chain_state
 
       spawn(fn ->
-        add_validated_block(genesis_block, genesis_chainstate, false)
+        add_validated_block(genesis_block, genesis_chainstate, genesis_chainstate, false)
       end)
     end
 
@@ -524,6 +544,45 @@ defmodule Aecore.Chain.Worker do
 
     {:noreply,
      %{state | blocks_data_map: blocks_data_map, top_hash: top_hash, top_height: top_height}}
+  end
+
+  defp update_generation_fees(generation_fees, new_block, prev_chain_state) do
+    case new_block do
+      %KeyBlock{header: %KeyHeader{beneficiary: beneficiary, height: height}} ->
+        reward_height = height + GovernanceConstants.beneficiary_reward_lock_time()
+
+        Map.put(generation_fees, reward_height, %{
+          beneficiary => 0
+        })
+
+      %MicroBlock{header: %MicroHeader{height: height}, txs: txs} ->
+        reward_height = height + GovernanceConstants.beneficiary_reward_lock_time()
+
+        [beneficiary] =
+          generation_fees
+          |> Map.get(reward_height)
+          |> Map.keys()
+
+        {_, updated_generation_fees} =
+          get_and_update_in(
+            generation_fees,
+            [
+              reward_height,
+              beneficiary
+            ],
+            &{&1, &1 + Miner.calculate_miner_reward(txs, prev_chain_state)}
+          )
+
+        updated_generation_fees
+    end
+  end
+
+  defp clear_generation_fees(generation_fees, height) do
+    if height > GovernanceConstants.beneficiary_reward_lock_time() do
+      Map.delete(generation_fees, height - 1)
+    else
+      generation_fees
+    end
   end
 
   defp remove_old_block_data_from_map(block_map, top_hash) do
