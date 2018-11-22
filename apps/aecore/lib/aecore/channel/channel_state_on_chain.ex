@@ -229,23 +229,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
              channel.channel_reserve
            })"}
 
-        # initiator/responder amounts can only be trusted when sequence == 0
-        channel.sequence == 0 and poi_initiator_amount != channel.initiator_amount ->
+        poi_initiator_amount + poi_responder_amount > channel.total_amount ->
           {:error,
-           "#{__MODULE__}: Invalid initiator amount, expected #{channel.initiator_amount}, got #{
-             poi_initiator_amount
-           }"}
-
-        channel.sequence == 0 and poi_responder_amount != channel.responder_amount ->
-          {:error,
-           "#{__MODULE__}: Invalid responder amount, expected #{channel.responder_amount}, got #{
-             poi_responder_amount
-           }"}
-
-        # if sequence != 0 and no ChannelOffChainTx was provided then deposits or withdraws modified the total amount
-        poi_initiator_amount + poi_responder_amount != channel.total_amount ->
-          {:error,
-           "#{__MODULE__}: Invalid total amount, expected #{channel.total_amount}, got #{
+           "#{__MODULE__}: Invalid total amount, expected at most #{channel.total_amount}, got #{
              poi_initiator_amount + poi_responder_amount
            }"}
 
@@ -289,9 +275,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
              channel.channel_reserve
            })"}
 
-        poi_initiator_amount + poi_responder_amount != channel.total_amount ->
+        poi_initiator_amount + poi_responder_amount > channel.total_amount ->
           {:error,
-           "#{__MODULE__}: Invalid total amount, expected #{channel.total_amount}, got #{
+           "#{__MODULE__}: Invalid total amount, expected at most #{channel.total_amount}, got #{
              poi_initiator_amount + poi_responder_amount
            }"}
 
