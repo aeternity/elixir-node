@@ -898,6 +898,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
             ChannelCloseMutualTx,
             %{
               channel_id: channel_id,
+              from: our_pubkey(peer_state),
               initiator_amount: initiator_amount - fee_initiator,
               responder_amount: responder_amount - fee_responder
             },
@@ -937,6 +938,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           data: %DataTx{
             payload: %ChannelCloseMutualTx{
               channel_id: tx_id,
+              from: tx_from,
               initiator_amount: tx_initiator_amount,
               responder_amount: tx_responder_amount
             }
@@ -951,6 +953,12 @@ defmodule Aecore.Channel.ChannelStatePeer do
     cond do
       tx_id != channel_id ->
         {:error, "#{__MODULE__}: Invalid id. Received tx for #{tx_id} but this is #{channel_id}"}
+
+      tx_from != foreign_pubkey(peer_state) ->
+        {:error,
+         "#{__MODULE__}: Invalid from. Received #{inspect(tx_from)}, but expected #{
+           inspect(foreign_pubkey(peer_state))
+         }"}
 
       tx_initiator_amount != initiator_amount - fee_initiator ->
         {:error,
