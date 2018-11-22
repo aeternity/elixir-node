@@ -17,6 +17,8 @@ defmodule Aecore.Governance.GovernanceConstants do
   @oracle_response_base_fee 2
   @oracle_extend_base_fee 1
 
+  @block_gas_limit 6_000_000
+
   @oracle_ttl_fee_per_block 0.001
 
   # 30min
@@ -39,6 +41,30 @@ defmodule Aecore.Governance.GovernanceConstants do
   @name_claim_burned_fee 3
 
   @max_txs_per_block 10_946
+
+  @default_tx_gas_price 15_000
+
+  @known_tx_types [
+    Aecore.Account.Tx.SpendTx,
+    Aecore.Channel.Tx.ChannelCloseMutualTx,
+    Aecore.Channel.Tx.ChannelCloseSoloTx,
+    Aecore.Channel.Tx.ChannelCreateTx,
+    Aecore.Channel.Tx.ChannelDepositTx,
+    Aecore.Channel.Tx.ChannelSettleTx,
+    Aecore.Channel.Tx.ChannelSlashTx,
+    Aecore.Channel.Tx.ChannelWithdrawTx,
+    Aecore.Contract.Tx.ContractCallTx,
+    Aecore.Contract.Tx.ContractCreateTx,
+    Aecore.Naming.Tx.NameClaimTx,
+    Aecore.Naming.Tx.NamePreClaimTx,
+    Aecore.Naming.Tx.NameRevokeTx,
+    Aecore.Naming.Tx.NameTransferTx,
+    Aecore.Naming.Tx.NameUpdateTx,
+    Aecore.Oracle.Tx.OracleExtendTx,
+    Aecore.Oracle.Tx.OracleQueryTx,
+    Aecore.Oracle.Tx.OracleRegistrationTx,
+    Aecore.Oracle.Tx.OracleResponseTx
+  ]
 
   # getter functions with same name for use in other modules
 
@@ -98,4 +124,13 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @spec max_txs_per_block :: non_neg_integer()
   def max_txs_per_block, do: @max_txs_per_block
+
+  @spec block_gas_limit :: non_neg_integer()
+  def block_gas_limit, do: @block_gas_limit
+
+  @spec default_tx_gas_price :: non_neg_integer()
+  def default_tx_gas_price, do: @default_tx_gas_price
+
+  @spec default_tx_gas_price :: list()
+  def get_valid_txs_type, do: @known_tx_types
 end
