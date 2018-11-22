@@ -15,7 +15,7 @@ defmodule Aecore.Governance.GovernanceConstants do
   @coinbase_transaction_amount 10_000_000_000_000_000_000
   @current_generation_fee_reward_multiplier 0.4
   @previous_generation_fee_reward_multiplier 0.6
-  @beneficiary_reward_lock_time 3
+  @beneficiary_reward_lock_time 180
 
   @minimum_fee 1
 

@@ -579,7 +579,7 @@ defmodule Aecore.Chain.Worker do
 
   defp clear_generation_fees(generation_fees, height) do
     if height > GovernanceConstants.beneficiary_reward_lock_time() do
-      Map.delete(generation_fees, height - 1)
+      Map.delete(generation_fees, height)
     else
       generation_fees
     end
