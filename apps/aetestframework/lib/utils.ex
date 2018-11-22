@@ -102,7 +102,7 @@ defmodule Aetestframework.Utils do
 
   def oracle_respond_cmd(sender, nonce, oracle_address) do
     "OracleQueryTx.id(#{inspect(sender)}, #{nonce}, #{inspect(oracle_address)})
-      |> Oracle.respond(\"I am fine, thanks!\", 5, 1234)"
+      |> Oracle.respond(\"I am fine, thanks!\", %{ttl: 20, type: :relative}, 5, 1234)"
   end
 
   def oracle_extend_cmd do

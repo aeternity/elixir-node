@@ -2,7 +2,7 @@ defmodule Aecore.Oracle.OracleQuery do
   @moduledoc """
   Module defining the structure of an OracleQuery
   """
-
+  alias Aecore.Chain.Identifier
   alias Aecore.Oracle.{Oracle, OracleQuery}
   alias Aecore.Keys
   alias Aeutil.Serialization
@@ -67,9 +67,9 @@ defmodule Aecore.Oracle.OracleQuery do
 
     [
       :binary.encode_unsigned(@version),
-      sender_address,
+      Identifier.create_encoded_to_binary(sender_address, :account),
       :binary.encode_unsigned(sender_nonce),
-      oracle_address,
+      Identifier.create_encoded_to_binary(oracle_address, :oracle),
       query,
       serialized_has_response,
       serialized_response,
@@ -81,9 +81,9 @@ defmodule Aecore.Oracle.OracleQuery do
 
   @spec decode_from_list(non_neg_integer(), list()) :: {:ok, OracleQuery.t()} | {:error, reason()}
   def decode_from_list(@version, [
-        sender_address,
+        encoded_sender_address,
         sender_nonce,
-        oracle_address,
+        encoded_oracle_address,
         query,
         has_response,
         response,
@@ -102,6 +102,12 @@ defmodule Aecore.Oracle.OracleQuery do
         <<>> -> :undefined
         _ -> response
       end
+
+    {:ok, oracle_address} =
+      Identifier.decode_from_binary_to_value(encoded_sender_address, :account)
+
+    {:ok, sender_address} =
+      Identifier.decode_from_binary_to_value(encoded_oracle_address, :oracle)
 
     {:ok,
      %OracleQuery{

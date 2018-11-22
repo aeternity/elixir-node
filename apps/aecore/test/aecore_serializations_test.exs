@@ -165,7 +165,7 @@ defmodule AecoreSerializationTest do
               75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
           query: "foo: bar",
           response: :undefined,
-          response_ttl: 86_000,
+          response_ttl: %{ttl: 86_000, type: :relative},
           sender_address:
             <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
               75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
