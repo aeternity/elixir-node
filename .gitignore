@@ -33,6 +33,7 @@ apps/aecore/src/c_src/
 
 # Ignore Logs created by aecore
 apps/aecore/logs
+logs
 
 # Ignore linter directories
 .elixir_ls/

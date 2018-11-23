@@ -26,11 +26,11 @@ config :logger,
 config :logger, :console, level: :error
 
 config :logger, :info,
-  path: "/logs/#{time}info.log",
+  path: "logs/#{time}info.log",
   level: :info
 
 config :logger, :error,
-  path: "/logs/#{time}error.log",
+  path: "logs/#{time}error.log",
   level: :error
 
 import_config "#{Mix.env()}.exs"
