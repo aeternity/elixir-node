@@ -240,12 +240,12 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         fee,
         ttl
       ]) do
-    response_ttl_type = Serialzation.decode_ttl_type(encoded_response_ttl_type)
+    response_ttl_type = Serialization.decode_ttl_type(encoded_response_ttl_type)
 
     payload = %{
       query_id: query_id,
       response: response,
-      response_ttl: %{ttl: response_ttl_value, type: response_ttl_type}
+      response_ttl: %{ttl: :binary.decode_unsigned(response_ttl_value), type: response_ttl_type}
     }
 
     DataTx.init_binary(

@@ -11,7 +11,9 @@ defmodule Aehttpserver.Web.OracleController do
     %{
       data: %{
         payload: %{
-          query_id: query_id
+          query_id: query_id,
+          response: response,
+          response_ttl: response_ttl
         },
         fee: fee
       }
@@ -19,7 +21,8 @@ defmodule Aehttpserver.Web.OracleController do
 
     case Oracle.respond(
            query_id,
-           query_id,
+           response,
+           response_ttl,
            fee
          ) do
       :ok ->

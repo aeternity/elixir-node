@@ -116,7 +116,7 @@ defmodule MultiNodeSyncTest do
 
     # Make a OracleRespond transaction and add it to the pool
     TestFramework.post(
-      Utils.oracle_respond_cmd(sender, nonce, oracle_address),
+      Utils.oracle_respond_cmd(sender, response_ttl, nonce, oracle_address),
       :oracle_respond_cmd,
       :node2
     )
