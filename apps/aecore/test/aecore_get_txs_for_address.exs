@@ -28,7 +28,8 @@ defmodule GetTxsForAddressTest do
 
     %{public: receiver} = :enacl.sign_keypair()
 
-    {:ok, signed_tx} = Account.spend(sender_pub, sender_priv, receiver, 2, 1, 2, <<"payload">>)
+    {:ok, signed_tx} =
+      Account.spend(sender_pub, sender_priv, receiver, 2, 1, 2, <<"payload">>, 1234)
 
     assert :ok = Pool.add_transaction(signed_tx)
 

@@ -67,8 +67,8 @@ defmodule TestUtils do
   def clean_blockchain do
     :ok = Persistence.delete_all()
     restart_supervisor(Aecore.Channel.Worker.Supervisor)
-    restart_supervisor(Aecore.Chain.Worker.Supervisor)
     restart_supervisor(Aecore.Tx.Pool.Worker.Supervisor)
+    restart_supervisor(Aecore.Chain.Worker.Supervisor)
     :ok
   end
 end
