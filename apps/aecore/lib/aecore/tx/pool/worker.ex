@@ -34,7 +34,7 @@ defmodule Aecore.Tx.Pool.Worker do
 
   @spec remove_transaction(SignedTx.t()) :: :ok
   def remove_transaction(tx) do
-    GenServer.call(__MODULE__, {:remove_transaction, tx})
+    GenServer.cast(__MODULE__, {:remove_transaction, tx})
   end
 
   @spec get_pool() :: tx_pool()
@@ -42,9 +42,9 @@ defmodule Aecore.Tx.Pool.Worker do
     GenServer.call(__MODULE__, :get_pool)
   end
 
-  @spec garbage_collection(non_neg_integer()) :: atom()
+  @spec garbage_collection(non_neg_integer()) :: :ok
   def garbage_collection(top_height) do
-    GenServer.call(__MODULE__, {:garbage_collection, top_height})
+    GenServer.cast(__MODULE__, {:garbage_collection, top_height})
   end
 
   @spec get_and_empty_pool() :: tx_pool()
@@ -103,11 +103,6 @@ defmodule Aecore.Tx.Pool.Worker do
     end
   end
 
-  def handle_call({:remove_transaction, tx}, _from, tx_pool) do
-    {_, updated_pool} = Map.pop(tx_pool, SignedTx.hash_tx(tx))
-    {:reply, :ok, updated_pool}
-  end
-
   def handle_call(:get_pool, _from, tx_pool) do
     {:reply, tx_pool, tx_pool}
   end
@@ -116,7 +111,12 @@ defmodule Aecore.Tx.Pool.Worker do
     {:reply, tx_pool, %{}}
   end
 
-  def handle_call({:garbage_collection, top_height}, _from, tx_pool) do
+  def handle_cast({:remove_transaction, tx}, tx_pool) do
+    {_, updated_pool} = Map.pop(tx_pool, SignedTx.hash_tx(tx))
+    {:noreply, updated_pool}
+  end
+
+  def handle_cast({:garbage_collection, top_height}, tx_pool) do
     updated_pool =
       Enum.reduce(tx_pool, %{}, fn {key, tx}, acc ->
         if tx.data.ttl >= top_height || tx.data.ttl == 0 do
@@ -126,7 +126,7 @@ defmodule Aecore.Tx.Pool.Worker do
         end
       end)
 
-    {:reply, :ok, updated_pool}
+    {:noreply, updated_pool}
   end
 
   @spec get_tx_size_bytes(SignedTx.t()) :: non_neg_integer()
