@@ -19,6 +19,7 @@ To build a custom transaction you need to follow few simple steps:
 - Make your own `transaction module`
 - Create your `custom transaction structure`
 - Override the `Transaction Behaviour` callbacks
+- Add your transaction handling module to a Governance constant module, to the constant, which holds a list of known transactions, called `@known_tx_types`
 - Write all your specific functions and checks inside your new `Transaction module`
 
 All custom transactions are children to the `DataTx` Transaction that wraps them inside.
