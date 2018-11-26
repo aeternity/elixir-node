@@ -12,6 +12,10 @@ This is a maintenance release. It includes the following changes:
 * Adjusted oracle serializations. Oracle query structure changes: added binary identifiers to senders and oracle owners.
 * Implemented functionality for garbage collecting of transactions in the pool. Transactions with expired TTL(TTL < current top_height) are removed from the transaction pool.
 * Added functionality to get base gas price for each transaction.
+* Introduced Delegates in Channels
+* Added ChannelSnapshot transaction
+* Adjusted Channel structures for compatibility with v0.25.0 epoch: ChannelMutalCloseTx, ChannelStateOnChain, ChannelCreateTx
+* Adjusted verious Channels checks for compatibility with v0.25.0 epoch
 
 Here, you can find [installation](https://github.com/aeternity/elixir-node/blob/master/docs/release-notes/release-notes-0.1.0.md#install-dependencies) and [configuration](https://github.com/aeternity/elixir-node/blob/master/docs/release-notes/release-notes-0.1.0.md#configuring-your-node) guides.
 
