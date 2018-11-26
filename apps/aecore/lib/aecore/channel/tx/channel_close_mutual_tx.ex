@@ -11,6 +11,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Channel.Tx.{ChannelCloseMutualTx, ChannelCreateTx}
   alias Aecore.Tx.DataTx
+  alias Aecore.Keys
 
   require Logger
 
@@ -19,6 +20,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
   @typedoc "Expected structure for the ChannelCloseMutal Transaction"
   @type payload :: %{
           channel_id: binary(),
+          from: Keys.pubkey(),
           initiator_amount: non_neg_integer(),
           responder_amount: non_neg_integer()
         }
@@ -32,6 +34,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
   @typedoc "Structure of the ChannelMutalClose Transaction type"
   @type t :: %ChannelCloseMutualTx{
           channel_id: binary(),
+          from: Keys.pubkey(),
           initiator_amount: non_neg_integer(),
           responder_amount: non_neg_integer()
         }
@@ -41,10 +44,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
 
   # Parameters
   - channel_id: channel id
+  - from: party that pays the fee
   - initiator_amount: the amount that the first sender commits
   - responder_amount: the amount that the second sender commits
   """
-  defstruct [:channel_id, :initiator_amount, :responder_amount]
+  defstruct [:channel_id, :from, :initiator_amount, :responder_amount]
 
   @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
@@ -58,10 +62,18 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
   ChannelCloseMutualTx senders are not passed with tx, but are supposed to be retrieved from Chainstate. The senders have to be channel initiator and responder.
   """
   @spec senders_from_chainstate(ChannelCloseMutualTx.t(), Chainstate.t()) :: list(binary())
-  def senders_from_chainstate(%ChannelCloseMutualTx{channel_id: channel_id}, chainstate) do
+  def senders_from_chainstate(
+        %ChannelCloseMutualTx{channel_id: channel_id, from: from},
+        chainstate
+      ) do
     case ChannelStateTree.get(chainstate.channels, channel_id) do
       %ChannelStateOnChain{} = channel ->
-        [channel.initiator_pubkey, channel.responder_pubkey]
+        # Nonce is checked for "from"
+        if from == channel.initiator_pubkey do
+          [channel.initiator_pubkey, channel.responder_pubkey]
+        else
+          [channel.responder_pubkey, channel.initiator_pubkey]
+        end
 
       :none ->
         []
@@ -71,11 +83,13 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
   @spec init(payload()) :: ChannelCloseMutualTx.t()
   def init(%{
         channel_id: channel_id,
+        from: from,
         initiator_amount: initiator_amount,
         responder_amount: responder_amount
       }) do
     %ChannelCloseMutualTx{
       channel_id: channel_id,
+      from: from,
       initiator_amount: initiator_amount,
       responder_amount: responder_amount
     }
@@ -163,6 +177,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
         _block_height,
         %ChannelCloseMutualTx{
           channel_id: channel_id,
+          from: from,
           initiator_amount: initiator_amount,
           responder_amount: responder_amount
         },
@@ -172,20 +187,20 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
     channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
-      initiator_amount < 0 ->
-        {:error, "#{__MODULE__}: Negative initiator balance"}
-
-      responder_amount < 0 ->
-        {:error, "#{__MODULE__}: Negative responder balance"}
-
       channel == :none ->
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
-      channel.total_amount != initiator_amount + responder_amount + fee ->
-        {:error,
-         "#{__MODULE__}: Wrong total balance, expected #{
-           channel.initiator_amount + channel.responder_amount
-         }, got #{initiator_amount + responder_amount + fee}"}
+      channel.total_amount < initiator_amount + responder_amount + fee ->
+        {:error, "#{__MODULE__}: Wrong total amount (including fee), expected less then
+         #{channel.initiator_amount + channel.responder_amount}, got
+         #{initiator_amount + responder_amount + fee}"}
+
+      !ChannelStateOnChain.is_peer?(channel, from) ->
+        {:error, "#{__MODULE__}: From must be a peer of the channel. From is #{from}, but the
+        parties are #{channel.initiator_pubkey} and #{channel.responder_pubkey}"}
+
+      !ChannelStateOnChain.active?(channel) ->
+        {:error, "#{__MODULE__}: Channel must be active"}
 
       true ->
         :ok
@@ -214,6 +229,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
     [
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(tx.channel_id, :channel),
+      Identifier.create_encoded_to_binary(tx.from, :account),
       :binary.encode_unsigned(tx.initiator_amount),
       :binary.encode_unsigned(tx.responder_amount),
       :binary.encode_unsigned(datatx.ttl),
@@ -225,29 +241,32 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutualTx do
   @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_channel_id,
+        encoded_from,
         initiator_amount,
         responder_amount,
         ttl,
         fee,
         nonce
       ]) do
-    case Identifier.decode_from_binary_to_value(encoded_channel_id, :channel) do
-      {:ok, channel_id} ->
-        payload = %{
-          channel_id: channel_id,
-          initiator_amount: :binary.decode_unsigned(initiator_amount),
-          responder_amount: :binary.decode_unsigned(responder_amount)
-        }
+    with {:ok, channel_id} <-
+           Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
+         {:ok, from} <- Identifier.decode_from_binary_to_value(encoded_from, :account) do
+      payload = %{
+        channel_id: channel_id,
+        from: from,
+        initiator_amount: :binary.decode_unsigned(initiator_amount),
+        responder_amount: :binary.decode_unsigned(responder_amount)
+      }
 
-        DataTx.init_binary(
-          ChannelCloseMutualTx,
-          payload,
-          [],
-          :binary.decode_unsigned(fee),
-          :binary.decode_unsigned(nonce),
-          :binary.decode_unsigned(ttl)
-        )
-
+      DataTx.init_binary(
+        ChannelCloseMutualTx,
+        payload,
+        [],
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
+      )
+    else
       {:error, _} = error ->
         error
     end

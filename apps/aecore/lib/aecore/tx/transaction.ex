@@ -59,6 +59,7 @@ defmodule Aecore.Tx.Transaction do
           | Aecore.Channel.Tx.ChannelSettleTx.t()
           | Aecore.Channel.Tx.ChannelWithdrawTx.t()
           | Aecore.Channel.Tx.ChannelDepositTx.t()
+          | Aecore.Channel.Tx.ChannelSnapshotSoloTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()

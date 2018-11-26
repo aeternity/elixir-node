@@ -223,8 +223,14 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
       !ChannelStateOnChain.active?(channel) ->
         {:error, "#{__MODULE__}: Can't withdraw from inactive channel."}
 
+      !ChannelStateOnChain.is_peer?(channel, withdrawing_account) ->
+        {:error,
+         "Withdraw destination must be a party of this channel. Tried to withdraw from #{
+           withdrawing_account
+         } but the parties are #{channel.initiator_pubkey} and #{channel.responder_pubkey}"}
+
       true ->
-        ChannelStateOnChain.validate_withdraw(channel, withdrawing_account, amount, sequence)
+        ChannelStateOnChain.validate_withdraw(channel, amount, sequence)
     end
   end
 
