@@ -56,7 +56,7 @@ defmodule Aetestframework.Utils do
   def simulate_spend_tx_cmd do
     "Keys.keypair(:sign)
     |> elem(0)
-    |> Account.spend(20, 10, <<\"payload\">>)
+    |> Account.spend(20, 10, <<\"payload\">>, 3)
     "
   end
 
