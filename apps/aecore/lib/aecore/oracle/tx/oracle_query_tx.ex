@@ -28,7 +28,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           query_data: String.t(),
           query_fee: non_neg_integer(),
           query_ttl: Oracle.ttl(),
-          response_ttl: Oracle.ttl()
+          response_ttl: Oracle.relative_ttl()
         }
 
   @typedoc "Structure of the OracleQuery Transaction type"
@@ -37,7 +37,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           query_data: String.t(),
           query_fee: non_neg_integer(),
           query_ttl: Oracle.ttl(),
-          response_ttl: Oracle.ttl()
+          response_ttl: Oracle.relative_ttl()
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate."
@@ -150,7 +150,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           oracle_address: %Identifier{value: oracle_address},
           query_data: query_data,
           query_ttl: query_ttl,
-          response_ttl: %{ttl: response_ttl},
+          response_ttl: response_ttl,
           query_fee: query_fee
         },
         %DataTx{nonce: nonce, senders: [%Identifier{value: sender}]},

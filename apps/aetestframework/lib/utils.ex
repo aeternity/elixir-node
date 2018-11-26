@@ -100,9 +100,9 @@ defmodule Aetestframework.Utils do
     |> Oracle.query(\"How are you?\", 5, 5, #{query_ttl}, #{response_ttl}, 1234)"
   end
 
-  def oracle_respond_cmd(sender, nonce, oracle_address) do
+  def oracle_respond_cmd(sender, response_ttl, nonce, oracle_address) do
     "OracleQueryTx.id(#{inspect(sender)}, #{nonce}, #{inspect(oracle_address)})
-      |> Oracle.respond(\"I am fine, thanks!\", 5, 1234)"
+      |> Oracle.respond(\"I am fine, thanks!\", #{response_ttl}, 5, 1234)"
   end
 
   def oracle_extend_cmd do

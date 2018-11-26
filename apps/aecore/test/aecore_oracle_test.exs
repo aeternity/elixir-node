@@ -153,9 +153,10 @@ defmodule AecoreOracleTest do
     case validity do
       :valid ->
         ttl = get_ttl(validity)
+        respond_ttl = %{ttl: 20, type: :relative}
         oracle_tree = Chain.chain_state().oracles.oracle_tree
         oracle_address = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()
-        Oracle.query(oracle_address, "foo: bar", 5, 10, ttl, ttl)
+        Oracle.query(oracle_address, "foo: bar", 5, 10, ttl, respond_ttl)
 
       :invalid ->
         case field do
@@ -189,21 +190,31 @@ defmodule AecoreOracleTest do
     case validity do
       :valid ->
         oracle_tree = Chain.chain_state().oracles.oracle_tree
+        response_ttl = get_response_ttl(validity)
         tree_query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
         <<_::binary-size(32), query_id::binary>> = tree_query_id
-        Oracle.respond(query_id, "boolean", 5)
+        Oracle.respond(query_id, "boolean", response_ttl, 5)
 
       :invalid ->
         case field do
           :id ->
             query_id = <<1, 2, 3>>
-            Oracle.respond(query_id, "boolean", 5)
+            response_ttl = get_response_ttl(validity)
+            Oracle.respond(query_id, "boolean", %{ttl: 20, type: :relative}, 5)
 
           :response_data ->
             oracle_tree = Chain.chain_state().oracles.oracle_tree
+            response_ttl = get_response_ttl(validity)
             tree_query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
             <<_::binary-size(32), query_id::binary>> = tree_query_id
-            Oracle.respond(query_id, 70, 5)
+            Oracle.respond(query_id, 70, response_ttl, 5)
+
+          :response_ttl ->
+            oracle_tree = Chain.chain_state().oracles.oracle_tree
+            response_ttl = get_response_ttl(validity)
+            tree_query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
+            <<_::binary-size(32), query_id::binary>> = tree_query_id
+            Oracle.respond(query_id, "boolean", response_ttl, 5)
         end
     end
   end
@@ -215,6 +226,16 @@ defmodule AecoreOracleTest do
 
       :invalid ->
         %{ttl: 1, type: :absolute}
+    end
+  end
+
+  def get_response_ttl(validity) do
+    case validity do
+      :valid ->
+        %{ttl: 20, type: :relative}
+
+      :invalid ->
+        %{ttl: 0, type: :relative}
     end
   end
 
