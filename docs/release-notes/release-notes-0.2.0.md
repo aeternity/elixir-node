@@ -10,7 +10,7 @@ This is a maintenance release. It includes the following changes:
 * Added `vm_version` field to `oracle` and `oracle_registration_tx` structures. 
 * Added `response_ttl` to `oracle_response_tx`.
 * Adjusted oracle serializations. Oracle query structure changes: added binary identifiers to senders and oracle owners.
-* Implemented functionality for garbage collecting of transactions in the pool. Transactions with expired TTL(TTL < current top_height) are removed from the transaction pool.
+* Implemented functionality for garbage collecting of transactions in the pool. Transactions with outdated ttl are removed from the transaction pool.
 * Added functionality to get base gas price for each transaction.
 * Introduced Delegates in Channels
 * Added ChannelSnapshot transaction
