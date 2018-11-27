@@ -54,21 +54,19 @@ defmodule Aecore.Chain.KeyHeader do
   use ExConstructor
 
   @spec encode_to_binary(KeyHeader.t()) :: binary()
-  def encode_to_binary(
-        %KeyHeader{
-          height: height,
-          prev_hash: prev_hash,
-          prev_key_hash: prev_key_hash,
-          root_hash: root_hash,
-          target: target,
-          nonce: nonce,
-          time: time,
-          miner: miner,
-          version: version,
-          pow_evidence: pow_evidence,
-          beneficiary: beneficiary
-        } = header
-      ) do
+  def encode_to_binary(%KeyHeader{
+        height: height,
+        prev_hash: prev_hash,
+        prev_key_hash: prev_key_hash,
+        root_hash: root_hash,
+        target: target,
+        nonce: nonce,
+        time: time,
+        miner: miner,
+        version: version,
+        pow_evidence: pow_evidence,
+        beneficiary: beneficiary
+      }) do
     flags = flags()
     unused_flags_size_bytes = trunc((@tag_size + @unused_flags_size) / 8)
 
