@@ -415,8 +415,10 @@ defmodule AecoreChannelTest do
              false
 
     assert :ok == call_s3({:slashed, solo_close_tx, 10, 1, ctx.pk3, ctx.sk3})
+    [slash] = Map.values(Pool.get_pool())
 
     TestUtils.assert_transactions_mined()
+    assert :ok == call_s1({:slashed, slash, 10, 1, ctx.pk1, ctx.sk1})
 
     {:ok, s1_state} = call_s1({:get_channel, id})
     {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 2, ctx.sk1)
@@ -626,6 +628,9 @@ defmodule AecoreChannelTest do
 
     assert ChannelStatePeer.calculate_state_hash(responder_state) ===
              ChannelStatePeer.calculate_state_hash(imported_responder_state)
+
+    assert tx_list === ChannelStatePeer.get_signed_tx_list(imported_initiator_state)
+    assert tx_list === ChannelStatePeer.get_signed_tx_list(imported_responder_state)
   end
 
   @tag :channels

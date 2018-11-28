@@ -208,8 +208,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     Enum.reduce_while(offchain_tx_list_from_oldest, {:ok, initial_state}, fn tx, {:ok, state} ->
       case process_fully_signed_tx(tx, state) do
-        {:ok, _} = new_acc ->
-          {:cont, new_acc}
+        {:ok, %ChannelStatePeer{mutually_signed_tx: prev_mutually_signed_tx} = new_state} ->
+          {:cont,
+           {:ok,
+            %ChannelStatePeer{new_state | mutually_signed_tx: [tx | prev_mutually_signed_tx]}}}
 
         {:error, _} = err ->
           {:halt, err}
