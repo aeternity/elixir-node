@@ -64,26 +64,35 @@ defmodule Aecore.Chain.Chainstate do
           Chainstate.t(),
           non_neg_integer()
         ) :: {:ok, Chainstate.t()} | {:error, String.t()}
-  def calculate_and_validate_chain_state(block, chainstate, block_height) do
+  def calculate_and_validate_chain_state(
+        %KeyBlock{header: %KeyHeader{}},
+        chainstate,
+        block_height
+      ) do
     updated_chainstate =
-      case block do
-        %KeyBlock{header: %KeyHeader{}} ->
-          chainstate
-          |> Call.prune_calls(block_height)
-          |> Oracle.remove_expired(block_height)
-          |> calculate_miner_reward_chain_state(block_height)
+      chainstate
+      |> Call.prune_calls(block_height)
+      |> Oracle.remove_expired(block_height)
+      |> calculate_miner_reward_chain_state(block_height)
 
-        %MicroBlock{txs: txs} ->
-          Enum.reduce_while(txs, chainstate, fn tx, chainstate_acc ->
-            case apply_transaction_on_state(chainstate_acc, block_height, tx) do
-              {:ok, updated_chainstate} ->
-                {:cont, updated_chainstate}
+    {:ok, updated_chainstate}
+  end
 
-              {:error, reason} ->
-                {:halt, reason}
-            end
-          end)
-      end
+  def calculate_and_validate_chain_state(
+        %MicroBlock{txs: txs},
+        chainstate,
+        block_height
+      ) do
+    updated_chainstate =
+      Enum.reduce_while(txs, chainstate, fn tx, chainstate_acc ->
+        case apply_transaction_on_state(chainstate_acc, block_height, tx) do
+          {:ok, updated_chainstate} ->
+            {:cont, updated_chainstate}
+
+          {:error, reason} ->
+            {:halt, reason}
+        end
+      end)
 
     case updated_chainstate do
       %Chainstate{} ->
@@ -130,7 +139,7 @@ defmodule Aecore.Chain.Chainstate do
           )
         end)
 
-      # the next beneficiary takes 60% of the fees from the generation that is previous to his 
+      # the next beneficiary takes 60% of the fees from the generation that is previous to his
       # (that's why the constant is named previous_generation_fee_reward_multiplier)
       accounts_with_next_beneficiary_reward =
         AccountStateTree.update(
