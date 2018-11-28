@@ -34,9 +34,20 @@ defmodule Aecore.Sync.Sync do
           | {:hash_pool, list(Task.pool_elem())}
           | {:get_block, block_height(), header_hash(), peer_id(), {:ok, Block.t()}}
           | {:post_blocks, :ok | {:error, Block.t(), block_height()}}
-  @type t :: %Sync{sync_tasks: list(Task.t())}
 
-  defstruct sync_tasks: []
+  @type t :: %Sync{
+          sync_tasks: list(Task.t()),
+          last_generation_in_sync: boolean(),
+          top_target: non_neg_integer(),
+          gossip_txs: boolean()
+        }
+
+  defstruct sync_tasks: [],
+            last_generation_in_sync: false,
+            top_target: 0,
+            gossip_txs: true
+
+  @default_max_gossip 16
 
   ### ===================================================
   ### API calls
@@ -48,6 +59,14 @@ defmodule Aecore.Sync.Sync do
     else
       GenServer.cast(__MODULE__, {:start_sync, peer_id, remote_hash})
     end
+  end
+
+  def get_generation(peer_id, hash) do
+    GenServer.cast(__MODULE__, {:get_generation, peer_id, hash})
+  end
+
+  def set_last_generation_in_sync() do
+    GenServer.cast(__MODULE__, :set_last_generation_in_sync)
   end
 
   def schedule_ping(peer_id) do
@@ -109,7 +128,7 @@ defmodule Aecore.Sync.Sync do
   ## to pick a random hash from the hashes in the pool.
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %Sync{sync_tasks: []}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %Sync{}, name: __MODULE__)
   end
 
   def init(state) do
@@ -117,6 +136,8 @@ defmodule Aecore.Sync.Sync do
     ## and if new tx is created/received
     Events.subscribe(:new_top_block)
     Events.subscribe(:tx_created)
+    Events.subscribe(:tx_received)   # TODO: Check aec_events:subscribe(tx_received)!!!
+
 
     ## Init the jobs queues
     Jobs.init_queues()
@@ -149,6 +170,13 @@ defmodule Aecore.Sync.Sync do
       end
 
     {res, new_state} = sync_task_for_chain(new_chain, updated_state)
+
+    new_updated_state =
+      case res do
+        {new_or_ex, sync_chain, _} when new_or_ex == :new or new_or_ex == :existing ->
+          maybe_new_top_target(sync_chain, new_state)
+        {:inconclusive, _, _} -> new_state
+      end
     {:reply, res, new_state}
   end
 
@@ -174,15 +202,32 @@ defmodule Aecore.Sync.Sync do
   ## Handle casts
 
   def handle_cast({:start_sync, peer_id, remote_header_hash}, state) do
-    Jobs.run_job(:sync_task_workers, fn -> do_start_sync(peer_id, remote_header_hash) end)
+    Jobs.run_job(:sync_tasks, fn -> do_start_sync(peer_id, remote_header_hash) end)
     {:noreply, state}
+  end
+
+  def handle_cast({:get_generation, peer_id, hash}, %Sync{last_generation_in_sync: false} = state) do
+    Jobs.run_job(:sync_tasks, fn -> case do_get_generation(peer_id, hash) do
+      :ok -> set_last_generation_in_sync()
+      {:error, _} -> :ok
+    end
+    end)
+    {:noreply, state}
+  end
+
+  def handle_cast({:get_generation, _, _}, state) do
+    {:noreply, state}
+  end
+
+  def handle_cast(:set_last_generation_in_sync, state) do
+    {:noreply, %{state | last_generation_in_sync: true}}
   end
 
   def handle_cast({:schedule_ping, peer_id}, state) do
     if peer_in_sync?(state, peer_id) do
       :ok
     else
-      Jobs.run_job(:sync_ping_workers, fn -> ping_peer(peer_id) end)
+      Jobs.run_job(:sync_ping, fn -> ping_peer(peer_id) end)
     end
 
     {:noreply, state}
@@ -204,14 +249,32 @@ defmodule Aecore.Sync.Sync do
 
   def handle_cast(_, state), do: {:noreply, state}
 
-  def handle_info({:gproc_ps_event, event, %{info: info}}, state) do
-    peer_ids = Peers.all_pids()
+  def handle_info({:gproc_ps_event, event, %{info: info}}, %Sync{gossip_txs: gossip_txs} = state) do
+    # FUTURE: Forward blocks only to outbound connections.
+    # Take a random subset (possibly empty) of peers that agree with us
+    # on chain height to forward blocks and transactions to.
+    max_gossip = max_gossip()
+    peer_ids = Peers.get_random(max_gossip)
     non_syncing_peer_ids = Enum.filter(peer_ids, fn pid -> not peer_in_sync?(state, pid) end)
 
     case event do
-      :new_top_block -> Jobs.enqueue(:block, info, non_syncing_peer_ids)
-      :tx_created -> Jobs.enqueue(:tx, info, peer_ids)
-      :tx_received -> Jobs.enqueue(:tx, info, peer_ids)
+      :block_to_publish ->
+        case info do
+          {:created, block} ->
+            peer_ids = Peers.all_pids()
+
+            Jobs.enqueue(:block, block, peer_ids)
+
+          {:received, block} ->
+            Jobs.enqueue(:block, block, non_syncing_peer_ids)
+        end
+
+      :tx_created when gossip_txs ->
+        Jobs.enqueue(:tx, info, peer_ids)
+
+      :tx_received when gossip_txs ->
+        Jobs.enqueue(:tx, info, non_syncing_peer_ids)
+
       _ -> :ignore
     end
 
@@ -895,4 +958,25 @@ defmodule Aecore.Sync.Sync do
     |> Enum.map(fn %Task{chain: %Chain{peers: peers}} -> peers end)
     |> Enum.member?(peer_id)
   end
+
+  defp do_get_generation(peer_id, last_hash) do
+    case PeerConnection.get_generation(peer_id, last_hash, :forward) do
+      {:ok, key_block, micro_block, :forward} ->
+        generation = %{key_block: key_block, micro_block: micro_block, dir: :forward}
+        add_generation(generation)
+
+      {:error, _} = err -> err
+
+    end
+  end
+
+  defp maybe_new_top_target(%Chain{chain: [%{height: chain_top_target} | _]}, state) do
+    case state.top_target < chain_top_target do
+      true -> true
+      false -> false
+
+    end
+  end
+
+  defp max_gossip, do: @default_max_gossip #should be a configurable variable from config file.
 end
