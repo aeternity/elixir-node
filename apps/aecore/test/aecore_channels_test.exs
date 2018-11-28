@@ -407,12 +407,14 @@ defmodule AecoreChannelTest do
     perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
     assert_offchain_state(id, 270, 30, 3)
 
+    export_import_peer_state(id, &call_s1/1, &call_s3/1)
+
     assert_custom_tx_succeeds(solo_close_tx)
 
     assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
              false
 
-    assert :ok == call_s1({:slashed, solo_close_tx, 10, 1, ctx.pk3, ctx.sk3})
+    assert :ok == call_s3({:slashed, solo_close_tx, 10, 1, ctx.pk3, ctx.sk3})
 
     TestUtils.assert_transactions_mined()
 
@@ -910,6 +912,13 @@ defmodule AecoreChannelTest do
     {:ok, state} = peer_fun.({:get_channel, id})
     {:ok, slash_tx} = ChannelStatePeer.snapshot(state, fee, nonce, priv_key)
     slash_tx
+  end
+
+  defp export_import_peer_state(id, from_server, to_server) do
+    {:ok, from_state} = from_server.({:get_channel, id})
+    tx_list = ChannelStatePeer.get_signed_tx_list(from_state)
+    {:ok, to_state} = ChannelStatePeer.from_signed_tx_list(tx_list, :delegate)
+    to_server.({:import_channel, id, to_state})
   end
 
   defp assert_custom_tx_fails(%SignedTx{} = tx) do
