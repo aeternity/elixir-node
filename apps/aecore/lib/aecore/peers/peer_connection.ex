@@ -28,15 +28,21 @@ defmodule Aecore.Peers.PeerConnection do
   @msg_fragment 0
   @p2p_response 100
   @ping 1
+  @ping_rsp 2
   @get_header_by_hash 3
   @get_header_by_height 15
   @header 4
   @get_n_successors 5
   @header_hashes 6
-  @get_block 7
-  @block 11
-  @get_mempool 13
+  @get_micro_block_txs 7
+  @micro_block_txs 13
+  @get_generation 8
+  @generation 12
+  @key_block 10
+  @micro_block 11
+
   @mempool 9
+
   @tx_pool_sync_init 20
   @tx_pool_sync_unfold 21
   @tx_pool_sync_get 22
@@ -127,10 +133,17 @@ defmodule Aecore.Peers.PeerConnection do
     |> send_request_msg(pid)
   end
 
-  @spec get_block(binary(), pid()) :: {:ok, Block.t()} | {:error, term()}
-  def get_block(hash, pid) when is_pid(pid) do
-    @get_block
-    |> pack_msg(%{hash: hash})
+  @spec get_micro_block_txs(binary(), list(binary()), pid()) ::
+          {:ok, list(SignedTx.t())} | {:error, term()}
+  def get_micro_block_txs(micro_block_hash, txs_hashes, pid) when is_pid(pid) do
+    @get_micro_block_txs
+    |> pack_msg(%{hash: micro_block_hash, tx_hashes: txs_hashes})
+    |> send_request_msg(pid)
+  end
+
+  def get_generation(%{hash: key_block_hash, dir: direction}) do
+    @get_generation
+    |> pack_msg(%{hash: key_block_hash, dir: direction})
     |> send_request_msg(pid)
   end
 
@@ -178,11 +191,17 @@ defmodule Aecore.Peers.PeerConnection do
         @get_n_successors ->
           @header_hashes
 
-        @get_block ->
-          @block
+        @get_generation ->
+          @generation
 
         @get_mempool ->
           @mempool
+
+        @get_micro_block_txs ->
+          @micro_block_txs
+
+        _ ->
+          type
       end
 
     updated_state = Map.put(state, :requests, %{response_type => from})
@@ -281,8 +300,11 @@ defmodule Aecore.Peers.PeerConnection do
       @get_n_successors ->
         spawn(fn -> handle_get_n_successors(deserialized_payload, self) end)
 
-      @get_block ->
-        spawn(fn -> handle_get_block(deserialized_payload, self) end)
+      @get_micro_block_txs ->
+        spawn(fn -> handle_get_micro_block_txs(deserialized_payload, self) end)
+
+      @get_generation ->
+        spawn(fn -> handle_get_generation(deserialized_payload, self) end)
 
       @get_mempool ->
         spawn(fn -> handle_get_mempool(self) end)
@@ -399,8 +421,47 @@ defmodule Aecore.Peers.PeerConnection do
     ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), header_hashes])
   end
 
-  def rlp_encode(@get_block, %{hash: hash}) do
-    ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), hash])
+  def rlp_encode(@get_micro_block_txs, %{hash: micro_block_hash, tx_hashes: txs_hashes}) do
+    ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), hash, txs_hashes])
+  end
+
+  def rlp_encode(@micro_block_txs, %{hash: hash, txs: txs}) do
+    encoded_txs = Enum.map(txs, fn tx -> SignedTx.rlp_encode(tx) end)
+    ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), hash, encoded_txs])
+  end
+
+  def rlp_encode(@get_generation, %{hash: key_block_hash, dir: :forward}) do
+    ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), hash, <<1::8>>])
+  end
+
+  def rlp_encode(@get_generation, %{hash: key_block_hash, dir: :backward}) do
+    ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), hash, <<0::8>>])
+  end
+
+  def rlp_encode(@generation, %{
+        keyblock_hash: keyblock_hash,
+        micro_blocks: micro_blocks,
+        dir: :forward
+      }) do
+    #  encoded_micro_blocks =
+    #  for  mb <- micro_blocks do
+    #  MicroBlock.rlp_encode(mb)
+    #  end
+    #
+    #  ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), keyblock_hash, encoded_micro_blocks, <<1::8>>])
+  end
+
+  def rlp_encode(@generation, %{
+        keyblock_hash: keyblock_hash,
+        micro_blocks: micro_blocks,
+        dir: :backward
+      }) do
+    #  encoded_micro_blocks =
+    #  for  mb <- micro_blocks do
+    #  MicroBlock.rlp_encode(mb)
+    #  end
+    #
+    #  ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), keyblock_hash, encoded_micro_blocks, <<0::8>> ])
   end
 
   def rlp_encode(@block, block) do
@@ -546,13 +607,52 @@ defmodule Aecore.Peers.PeerConnection do
     %{hashes: deserialized_hashes}
   end
 
-  def rlp_decode(@get_block, encoded_block_hash) do
+  def rlp_decode(@get_micro_block_txs, encoded_info) do
     [
       _vsn,
-      block_hash
-    ] = ExRLP.decode(encoded_block_hash)
+      hash,
+      txs_hashes
+    ] = ExRLP.decode(encoded_info)
 
-    %{hash: block_hash}
+    %{hash: block_hash, tx_hashes: txs_hashes}
+  end
+
+  def rlp_decode(@micro_block_txs, encoded_info) do
+    [
+      _vsn,
+      hash,
+      txs
+    ] = ExRLP.decode(encoded_info)
+
+    %{hash: hash, txs: txs}
+  end
+
+  def rlp_decode(@get_generation, encoded_info) do
+    [_vsn, keyblock_hash, encoded_dir] = ExRLP.decode(encoded_info)
+
+    decoded_dir =
+      case encoded_dir do
+        <<1::8>> -> :forward
+        <<0::8>> -> :backward
+      end
+
+    %{hash: keyblock_hash, dir: decoded_dir}
+  end
+
+  def rlp_decode(@generation, encoded_info) do
+    [_vsn, keyblock_hash, encoded_mbs, encoded_dir] = ExRLP.decode(encoded_info)
+
+    decoded_dir =
+      case encoded_dir do
+        <<1::8>> -> :forward
+        <<0::8>> -> :backward
+      end
+
+    # micro_blocks= for encoded_block <- encoded_mbs do
+    # MicroBlock.rlp_decode(encoded_block)
+    # end
+
+    # %{hash: keyblock_hash, micro_blocks: micro_blocks, dir: decoded_dir}
   end
 
   def rlp_decode(@block, encoded_block) do
@@ -824,6 +924,18 @@ defmodule Aecore.Peers.PeerConnection do
   defp handle_get_block(%{hash: hash}, pid) do
     result = Chain.get_block(hash)
     send_response(result, @block, pid)
+  end
+
+  defp handle_get_micro_block_txs(%{hash: hash, tx_hashes: tx_hashes}, pid) do
+    # micro_block =  Chain.get_microblock_by_hash(hash)
+    # txs=  recursive finding of given txs_hashes in block's txs.
+    # result= %{hash: hash, txs: tx_hashes}
+    # send_response(txs,@micro_block_txs, pid)
+  end
+
+  defp handle_get_generation(%{hash: keyblock_hash, dir: dir}, pid) do
+    # generation = Chain.get_generation_by_hash(keyblock_hash, dir)
+    # send_response(generation, @generation, pid)
   end
 
   defp handle_get_mempool(pid) do
