@@ -136,8 +136,7 @@ defmodule Aecore.Sync.Sync do
     ## and if new tx is created/received
     Events.subscribe(:new_top_block)
     Events.subscribe(:tx_created)
-    Events.subscribe(:tx_received)   # TODO: Check aec_events:subscribe(tx_received)!!!
-
+    Events.subscribe(:tx_received)
 
     ## Init the jobs queues
     Jobs.init_queues()
@@ -174,10 +173,13 @@ defmodule Aecore.Sync.Sync do
     new_updated_state =
       case res do
         {new_or_ex, sync_chain, _} when new_or_ex == :new or new_or_ex == :existing ->
-          maybe_new_top_target(sync_chain, new_state)
-        {:inconclusive, _, _} -> new_state
+          Task.maybe_new_top_target(sync_chain, new_state)
+
+        {:inconclusive, _, _} ->
+          new_state
       end
-    {:reply, res, new_state}
+
+    {:reply, res, new_updated_state}
   end
 
   def handle_call({:update_sync_task, update, task_id}, _from, state) do
@@ -207,11 +209,13 @@ defmodule Aecore.Sync.Sync do
   end
 
   def handle_cast({:get_generation, peer_id, hash}, %Sync{last_generation_in_sync: false} = state) do
-    Jobs.run_job(:sync_tasks, fn -> case do_get_generation(peer_id, hash) do
-      :ok -> set_last_generation_in_sync()
-      {:error, _} -> :ok
-    end
+    Jobs.run_job(:sync_tasks, fn ->
+      case do_get_generation(peer_id, hash) do
+        :ok -> set_last_generation_in_sync()
+        {:error, _} -> :ok
+      end
     end)
+
     {:noreply, state}
   end
 
@@ -275,7 +279,8 @@ defmodule Aecore.Sync.Sync do
       :tx_received when gossip_txs ->
         Jobs.enqueue(:tx, info, non_syncing_peer_ids)
 
-      _ -> :ignore
+      _ ->
+        :ignore
     end
 
     {:noreply, state}
@@ -314,7 +319,7 @@ defmodule Aecore.Sync.Sync do
         ## Merge the chains (possibly get more blocks if the new chain is longer)
         new_chain = Chain.merge_chains(%Chain{chain | chain_id: task_id}, matched_chain)
         updated_task = %Task{task | chain: new_chain}
-        {{:existing, task_id}, Task.set_sync_task(updated_task, state)}
+        {{:existing, new_chain, task_id}, Task.set_sync_task(updated_task, state)}
 
       {:inconclusive, _, _} = res ->
         {res, state}
@@ -350,7 +355,7 @@ defmodule Aecore.Sync.Sync do
 
   def handle_last_result(
         %Task{pool: pool} = task,
-        {:get_block, block_height, header_hash, peer_id, {:ok, block}}
+        {:get_generation, block_height, header_hash, peer_id, {:ok, block}}
       ) do
     pool_with_added_block =
       Enum.map(pool, fn
@@ -481,7 +486,7 @@ defmodule Aecore.Sync.Sync do
 
     {picked_block_height, picked_header_hash, false} = Enum.fetch!(pick_from, random - 1)
     Logger.info("#{__MODULE__}: Get block at height #{picked_block_height}")
-    {{:get_block, picked_block_height, picked_header_hash}, task}
+    {{:get_generation, picked_block_height, picked_header_hash}, task}
   end
 
   def do_get_next_work_item(%Task{} = task) do
@@ -548,15 +553,19 @@ defmodule Aecore.Sync.Sync do
   This worker has done it's job,
   remove it from the task that it is related to.
   """
-  @spec terminate_worker(pid(), Sync.t()) :: Sync.t()
-  def terminate_worker(worker_pid, %Sync{sync_tasks: tasks} = state) do
+  @spec terminate_worker(pid(), Sync.t(), atom()) :: Sync.t()
+  def terminate_worker(worker_pid, %Sync{sync_tasks: tasks} = state, reason) do
     case Enum.filter(tasks, fn %{workers: workers} ->
            Enum.any?(workers, fn {_, pid} -> pid == worker_pid end)
          end) do
       [task] ->
-        worker_pid
-        |> terminate_worker(task)
-        |> Task.set_sync_task(state)
+        {peer, new_task} = terminate_worker(worker_pid, task)
+        new_state = Task.set_sync_task(new_task, state)
+
+        case reason do
+          :normal -> new_state
+          _ -> Task.do_update_sync_task(new_state, tasks.id, {:error, peer})
+        end
 
       [] ->
         state
@@ -570,7 +579,7 @@ defmodule Aecore.Sync.Sync do
       "#{__MODULE__}: Terminating worker: #{inspect(worker_pid)} for worker: #{inspect(peer)}"
     )
 
-    %Task{task | workers: Enum.filter(workers, fn {_, pid} -> pid != worker_pid end)}
+    {peer, %Task{task | workers: Enum.filter(workers, fn {_, pid} -> pid != worker_pid end)}}
   end
 
   @doc """
@@ -641,7 +650,7 @@ defmodule Aecore.Sync.Sync do
     |> identify_chain()
   end
 
-  defp identify_chain({:existing, task}) do
+  defp identify_chain({:existing, _chain, task}) do
     Logger.info("#{__MODULE__}: Already syncing chain #{inspect(task)}")
     {:ok, task}
   end
@@ -702,7 +711,7 @@ defmodule Aecore.Sync.Sync do
     case get_next_work_item(task_id, peer_id, last_result) do
       :take_a_break ->
         fun = fn -> work_on_sync_task(peer_id, task_id) end
-        Jobs.delayed_run_job(peer_id, task_id, :sync_task_workers, fun, 250)
+        Jobs.delayed_run_job(peer_id, task_id, :sync_tasks, fun, 5000)
 
       {:agree_on_height, chain} ->
         %Chain{chain: [%{height: top_block_height, hash: top_header_hash} | _]} = chain
@@ -739,17 +748,17 @@ defmodule Aecore.Sync.Sync do
         res = post_blocks(blocks)
         work_on_sync_task(peer_id, task_id, {:post_blocks, res})
 
-      {:get_block, block_height, header_hash} ->
+      {:get_generation, block_height, header_hash} ->
         res =
-          case fetch_block(header_hash, peer_id) do
+          case fetch_generation(header_hash, peer_id) do
             {:ok, false, _block} ->
-              {:get_block, block_height, header_hash, peer_id, {:ok, :local}}
+              {:get_generation, block_height, header_hash, peer_id, {:ok, :local}}
 
             {:ok, true, block} ->
-              {:get_block, block_height, header_hash, peer_id, {:ok, block}}
+              {:get_generation, block_height, header_hash, peer_id, {:ok, block}}
 
             {:error, reason} ->
-              {:error, {:get_block, reason}}
+              {:error, {:get_generation, reason}}
           end
 
         work_on_sync_task(peer_id, task_id, res)
@@ -776,13 +785,33 @@ defmodule Aecore.Sync.Sync do
   end
 
   defp post_blocks(from, _to, [{block_height, _header_hash, {peer_id, block}} | blocks]) do
-    case Chainstate.add_block(block) do
+    case add_generation(block) do
       :ok ->
         post_blocks(from, block_height, blocks)
 
       {:error, reason} ->
         Logger.info("#{__MODULE__}: Failed to add synced block #{block_height}: #{reason}")
         {:error, peer_id, block_height}
+    end
+  end
+
+  defp add_generation(%{dir: :forward, key_block: _key_block, micro_blocks: micro_blocks}) do
+    add_blocks(micro_blocks)
+  end
+
+  defp add_generation(%{dir: :backward, key_block: key_block, micro_blocks: micro_blocks}) do
+    add_blocks(micro_blocks ++ [key_block])
+  end
+
+  defp add_blocks([]) do
+    :ok
+  end
+
+  defp add_blocks([block | blocks]) do
+    with :ok <- Chainstate.add_block(block) do
+      add_blocks(blocks)
+    else
+      {:error, _reason} = err -> err
     end
   end
 
@@ -894,6 +923,7 @@ defmodule Aecore.Sync.Sync do
          ) do
       {:ok, %{hashes: []}} ->
         Logger.info("#{__MODULE__}: Sync done (according to #{inspect(peer_id)})")
+        do_get_generation(peer_id, start_header_hash)
         update_sync_task({:done, peer_id}, task_id)
 
       {:ok, %{hashes: hashes}} ->
@@ -908,34 +938,48 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
+  defp do_get_generation(peer_id, last_hash) do
+    case PeerConnection.get_generation(peer_id, last_hash, :forward) do
+      {:ok, key_block, micro_block, :forward} ->
+        generation = %{key_block: key_block, micro_block: micro_block, dir: :forward}
+        add_generation(generation)
+
+      {:error, _} = err ->
+        err
+    end
+  end
+
   # Check if we already have this block locally, is so
   # take it from the chain
-  defp fetch_block(header_hash, peer_pid) do
-    case Chainstate.get_block(header_hash) do
-      {:ok, block} ->
-        Logger.debug(fn -> "#{__MODULE__}: We already have this block!" end)
-        {:ok, false, block}
+  defp fetch_generation(header_hash, peer_pid) do
+    case has_generation(header_hash) do
+      true ->
+        Logger.debug(fn ->
+          "#{__MODULE__}: Block hash #{inspect(header_hash)} already fetched, using local copy"
+        end)
 
-      {:error, _} ->
+        {:ok, :local}
+
+      false ->
         fetch_block_ext(header_hash, peer_pid)
     end
   end
 
   # If we don't have the block locally, take it from the Remote Peer
   defp fetch_block_ext(header_hash, peer_pid) do
-    case PeerConnection.get_block(header_hash, peer_pid) do
-      {:ok, %{block: block}} ->
-        case Header.hash(block.header) === header_hash do
+    case PeerConnection.get_generation(header_hash, peer_pid, :backward) do
+      {:ok, key_block, micro_blocks, :backward} ->
+        case Header.hash(key_block.header) === header_hash do
           true ->
             Logger.debug(fn ->
-              "#{__MODULE__}: Block #{inspect(block)} fetched from #{inspect(peer_pid)}"
+              "#{__MODULE__}: KeyBlock #{inspect(key_block)} fetched from #{inspect(peer_pid)}"
             end)
 
-            {:ok, true, block}
+            {:ok, %{key_block: key_block, micro_blocks: micro_blocks, dir: :backward}}
 
           false ->
             Logger.error(fn ->
-              "#{__MODULE__}: Calculated header for block #{inspect(block)} does not match header hash: #{
+              "#{__MODULE__}: Calculated header for key block #{inspect(key_block)} does not match header hash: #{
                 header_hash
               }"
             end)
@@ -952,6 +996,13 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
+  defp has_generation(key_block_hash) do
+    case Chainstate.get_generation_by_hash(key_block_hash, :backward) do
+      {:ok, _generation} -> true
+      :error -> false
+    end
+  end
+
   ## Checks if peer is syncing
   defp peer_in_sync?(%Sync{sync_tasks: tasks}, peer_id) do
     tasks
@@ -959,24 +1010,6 @@ defmodule Aecore.Sync.Sync do
     |> Enum.member?(peer_id)
   end
 
-  defp do_get_generation(peer_id, last_hash) do
-    case PeerConnection.get_generation(peer_id, last_hash, :forward) do
-      {:ok, key_block, micro_block, :forward} ->
-        generation = %{key_block: key_block, micro_block: micro_block, dir: :forward}
-        add_generation(generation)
-
-      {:error, _} = err -> err
-
-    end
-  end
-
-  defp maybe_new_top_target(%Chain{chain: [%{height: chain_top_target} | _]}, state) do
-    case state.top_target < chain_top_target do
-      true -> true
-      false -> false
-
-    end
-  end
-
-  defp max_gossip, do: @default_max_gossip #should be a configurable variable from config file.
+  # should be a configurable variable from config file.
+  defp max_gossip, do: @default_max_gossip
 end

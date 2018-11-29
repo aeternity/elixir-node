@@ -11,6 +11,7 @@ defmodule Aecore.Sync.Task do
 
   alias Aecore.Sync.{Chain, Sync}
   alias Aecore.Chain.Block
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias __MODULE__
 
   require Logger
@@ -112,11 +113,42 @@ defmodule Aecore.Sync.Task do
           "#{__MODULE__}: Removing Sync task: task with target: #{inspect(target_chain)}"
         )
 
-        delete_sync_task(task, sync)
+        new_state = delete_sync_task(task, sync)
+        maybe_update_top_target(new_state)
 
       _ ->
         set_sync_task(task, sync)
     end
+  end
+
+  @spec maybe_new_top_target(Chain.t(), Sync.t()) :: Sync.t()
+  def maybe_new_top_target(%Chain{chain: [%{height: chain_top_target} | _]}, sync_state) do
+    case sync_state.top_target < chain_top_target do
+      true -> update_top_target(chain_top_target, sync_state)
+      false -> sync_state
+    end
+  end
+
+  defp maybe_update_top_target(%Sync{top_target: top_target, sync_tasks: sync_tasks} = sync_state) do
+    new_top =
+      List.foldl(sync_tasks, 0, fn %Task{chain: %Chain{chain: [%{height: height} | _]}},
+                                   prev_max ->
+        if height > prev_max do
+          height
+        else
+          prev_max
+        end
+      end)
+
+    case top_target == new_top do
+      true -> sync_state
+      false -> update_top_target(new_top, sync_state)
+    end
+  end
+
+  defp update_top_target(top_target, sync_state) do
+    Pool.new_sync_top_target(top_target)
+    %{sync_state | top_target: top_target}
   end
 
   @spec match_chain_to_task(Chain.t(), list(Task.t()), list()) ::

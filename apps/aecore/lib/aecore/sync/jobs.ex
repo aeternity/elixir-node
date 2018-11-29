@@ -16,6 +16,7 @@ defmodule Aecore.Sync.Jobs do
   alias Aecore.Sync.Task, as: SyncTask
   alias Aecore.Chain.Block
   alias Aecore.Tx.SignedTx
+  alias Aecore.Peers.PeerConnection
 
   @type peer_id :: pid()
   @type delay :: non_neg_integer()
@@ -54,7 +55,9 @@ defmodule Aecore.Sync.Jobs do
     {task, {:change_worker, peer_id, old_worker, new_worker}}
   end
 
-  @spec enqueue(gossip(), Block.t() | SignedTx.t(), list(peer_id())) :: {:ok, pid()}
+  @spec enqueue(gossip(), Block.t() | SignedTx.t(), list()) :: {:ok, pid()} | :ok
+  def enqueue(_gossip, _data, []), do: :ok
+
   def enqueue(gossip, data, peer_ids) do
     Task.start(fn ->
       Enum.map(peer_ids, fn peer_id ->
@@ -64,7 +67,9 @@ defmodule Aecore.Sync.Jobs do
   end
 
   defp enqueue_strategy(:block, block, peer_id) do
-    fn -> Sync.forward_block(block, peer_id) end
+    # ser_block = PeerConnection.gossip_serialize_block(block)
+    # TODO Adjust serializations for peer connection to handle Microblocks and Keyblocks
+    fn -> Sync.forward_block(ser_block, peer_id) end
   end
 
   defp enqueue_strategy(:tx, tx, peer_id) do

@@ -5,7 +5,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   use GenServer
 
-  alias Aecore.Chain.{Block, Genesis}
+  alias Aecore.Chain.{Block, Genesis, KeyBlock, KeyHeader, MicroBlock}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
@@ -601,6 +601,21 @@ defmodule Aecore.Peers.PeerConnection do
     [_vsn, finish] = ExRLP.decode(encoded_finish)
     decoded_finish = bool_bin(finish)
     %{finish: decoded_finish}
+  end
+
+  @spec gossip_serialize_tx(SignedTx.t()) :: binary()
+  def gossip_serialize_tx(tx) do
+    SignedTx.rlp_encode(tx)
+  end
+
+  def gossip_serialize_block(%MicroBlock{} = micro_block) do
+    {:light_micro_block, MicroBlock.encode_to_binary(micro_block)}
+    # TODO should be light microblock serialization instead
+    # https://github.com/aeternity/epoch/blob/v1.0.0/apps/aecore/src/aec_peer_connection.erl#L1204
+  end
+
+  def gossip_serialize_block(%KeyBlock{header: header}) do
+    {:key_block, KeyHeader.encode_to_binary(header)}
   end
 
   defp do_ping(%{status: {:connected, socket}}) do

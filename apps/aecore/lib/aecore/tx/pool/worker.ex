@@ -52,6 +52,11 @@ defmodule Aecore.Tx.Pool.Worker do
     GenServer.call(__MODULE__, {:get_txs_for_address, address})
   end
 
+  def new_sync_top_target(new_sync_top) do
+    Logger.info(fn -> "New sync top target" end)
+    GenServer.cast(__MODULE__, {:new_sync_top_target, new_sync_top})
+  end
+
   # Server side
 
   def handle_call({:get_txs_for_address, address}, _from, state) do
@@ -101,6 +106,10 @@ defmodule Aecore.Tx.Pool.Worker do
 
   def handle_call(:get_and_empty_pool, _from, tx_pool) do
     {:reply, tx_pool, %{}}
+  end
+
+  def handle_cast({:new_sync_top_target, new_sync_top}, state) do
+    {:noreply, do_update_sync_top_target(new_sync_top, state)}
   end
 
   @spec get_tx_size_bytes(SignedTx.t()) :: non_neg_integer()
@@ -153,5 +162,10 @@ defmodule Aecore.Tx.Pool.Worker do
 
   defp check_address_tx([], _address, user_txs) do
     user_txs
+  end
+
+  # To be implemented
+  defp do_update_sync_top_target(new_sync_top, state) do
+    state
   end
 end

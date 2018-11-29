@@ -12,4 +12,19 @@ defmodule Aecore.Chain.MicroBlock do
         }
 
   defstruct [:header, :txs]
+  @rlp_tag 101
+
+  def encode_to_binary(%MicroBlock{header: header, txs: txs}) do
+    encoded_header = MicroHeader.encode_to_binary(header)
+
+    encoded_txs =
+      for tx <- txs do
+        SignedTx.rlp_encode(tx)
+      end
+
+    # TODO implement PoF
+    encoded_pof = <<>>
+    encoded_rest_data = ExRLP.encode([@rlp_tag, header.version, encoded_txs, encoded_pof])
+    <<encoded_header::binary, encoded_rest_data::binary>>
+  end
 end
