@@ -350,6 +350,9 @@ defmodule Aecore.Chain.Worker do
         } = state
       ) do
     Enum.each(txs, fn tx -> Pool.remove_transaction(tx) end)
+
+    Pool.garbage_collection(height)
+
     new_block_hash = Header.hash(header)
 
     # refs_list is generated so it contains n-th prev blocks for n-s being a power of two.

@@ -9,6 +9,7 @@ defmodule AecoreChannelTest do
   alias Aecore.Keys
   alias Aecore.Channel.Worker, as: Channels
   alias Aeutil.Serialization
+  alias Aecore.Account.AccountStateTree
 
   alias Aecore.Channel.{
     ChannelStateOnChain,
@@ -101,6 +102,45 @@ defmodule AecoreChannelTest do
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
     TestUtils.assert_balance(ctx.pk1, 40 + 270 - 5)
     TestUtils.assert_balance(ctx.pk2, 50 + 30 - 5)
+
+    call_s1({:closed, signed_close_tx})
+    call_s2({:closed, signed_close_tx})
+    assert :closed == get_fsm_state_s1(id)
+    assert :closed == get_fsm_state_s2(id)
+
+    assert %{} == Pool.get_and_empty_pool()
+  end
+
+  @tag :channels
+  @tag timeout: 120_000
+  test "Create channel, transfer funds, mutal close channel with responder", ctx do
+    id = create_channel(ctx)
+
+    assert AccountStateTree.get(Chain.chain_state().accounts, ctx.pk1).nonce == 1
+    assert AccountStateTree.get(Chain.chain_state().accounts, ctx.pk2).nonce == 0
+
+    # Can't transfer more then reserve allows
+    {:error, _} = call_s2({:transfer, id, 151, ctx.sk2})
+
+    perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 100, 200, 2)
+
+    perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
+    assert_offchain_state(id, 270, 30, 3)
+
+    {:ok, close_tx} = call_s2({:close, id, {5, 5}, 1, ctx.sk2})
+    {:ok, signed_close_tx} = call_s1({:receive_close_tx, id, close_tx, {5, 5}, ctx.sk1})
+    assert :closing == get_fsm_state_s1(id)
+    assert :closing == get_fsm_state_s2(id)
+
+    TestUtils.assert_transactions_mined()
+
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+    TestUtils.assert_balance(ctx.pk1, 40 + 270 - 5)
+    TestUtils.assert_balance(ctx.pk2, 50 + 30 - 5)
+
+    assert AccountStateTree.get(Chain.chain_state().accounts, ctx.pk1).nonce == 1
+    assert AccountStateTree.get(Chain.chain_state().accounts, ctx.pk2).nonce == 1
 
     call_s1({:closed, signed_close_tx})
     call_s2({:closed, signed_close_tx})

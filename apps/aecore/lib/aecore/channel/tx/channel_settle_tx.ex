@@ -154,7 +154,9 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
       !ChannelStateOnChain.is_peer?(channel, sender) ->
-        {:error, "#{__MODULE__}: Sender must be a party of the channel"}
+        {:error,
+         "#{__MODULE__}: Settle can only be made by a peer of the channel. Sender is #{sender}
+         but the parties are #{channel.initiator_pubkey} and #{channel.responder_pubkey}"}
 
       !ChannelStateOnChain.settled?(channel, block_height) ->
         {:error, "#{__MODULE__}: Channel isn't settled"}
@@ -170,6 +172,10 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
          "#{__MODULE__}: Wrong responder amount, expected #{channel.responder_amount}, got #{
            responder_amount
          }"}
+
+      channel.total_amount < initiator_amount + responder_amount ->
+        {:error, "#{__MODULE__}: Not enough funds in channel, expected at least
+        #{initiator_amount + responder_amount}, but channel has #{channel.total_amount}"}
 
       true ->
         :ok

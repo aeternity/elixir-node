@@ -27,6 +27,8 @@ defmodule Aecore.Oracle.Oracle do
   @typedoc "Expected TTL structure for the oracle transactions"
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
+  @type relative_ttl :: %{ttl: non_neg_integer(), type: :relative}
+
   @pubkey_size 33
 
   @typedoc "Structure of the Oracle type"
@@ -131,11 +133,13 @@ defmodule Aecore.Oracle.Oracle do
   Creates an oracle response transaction with the query referenced by its
   transaction hash and the data of the response.
   """
-  @spec respond(binary(), String.t(), non_neg_integer(), non_neg_integer()) :: :ok | :error
-  def respond(query_id, response, fee, tx_ttl \\ 0) do
+  @spec respond(binary(), String.t(), relative_ttl(), non_neg_integer(), non_neg_integer()) ::
+          :ok | :error
+  def respond(query_id, response, response_ttl, fee, tx_ttl \\ 0) do
     payload = %OracleResponseTx{
       query_id: query_id,
-      response: response
+      response: response,
+      response_ttl: response_ttl
     }
 
     {pubkey, privkey} = Keys.keypair(:sign)

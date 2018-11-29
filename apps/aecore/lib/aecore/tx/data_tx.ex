@@ -321,9 +321,9 @@ defmodule Aecore.Tx.DataTx do
       tx_type_preprocess_check != :ok ->
         tx_type_preprocess_check
 
-      DataTx.ttl(tx) < block_height ->
+      ttl(tx) < block_height ->
         {:error,
-         "#{__MODULE__}: Invalid or expired TTL value: #{DataTx.ttl(tx)}, with given block's height: #{
+         "#{__MODULE__}: Invalid or expired TTL value: #{ttl(tx)}, with given block's height: #{
            block_height
          }"}
 
