@@ -24,7 +24,8 @@ defmodule Aecore.Chain.Worker do
     Block,
     Header,
     Chainstate,
-    Genesis
+    Genesis,
+    PoF
   }
 
   alias Aeutil.{Serialization, Scientific, PatriciaMerkleTree, Events}
@@ -197,12 +198,22 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
+  @spec get_key_block_by_height(non_neg_integer(), binary() | nil) ::
           {:ok, Block.t()} | {:error, String.t() | atom()}
-  def get_block_by_height(height, chain_hash \\ nil) do
+  def get_key_block_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash, :block) do
       {:error, _} = error -> error
       %{block: block} -> {:ok, block}
+    end
+  end
+
+  def get_generation_by_height(height) do
+    case get_key_block_by_height(height + 1) do
+      {:ok, %KeyBlock{header: %KeyHeader{prev_hash: prev_hash, prev_key_hash: prev_key_hash}}} ->
+        get_generation([], prev_hash, prev_key_hash)
+
+      {:error, _} = err ->
+        err
     end
   end
 
@@ -246,7 +257,7 @@ defmodule Aecore.Chain.Worker do
 
   @spec add_block(KeyBlock.t() | MicroBlock.t(), boolean()) :: :ok | {:error, String.t()}
   def add_block(
-        %{header: %{prev_hash: prev_hash, prev_key_hash: prev_key_hash}} = block,
+        %{header: %{prev_hash: prev_hash, prev_key_hash: prev_key_hash, height: height}} = block,
         loop_micro_block
       ) do
     with {:ok, prev_block} <- get_block(prev_hash),
@@ -262,8 +273,16 @@ defmodule Aecore.Chain.Worker do
              prev_block,
              prev_block_chain_state,
              blocks_for_target_calculation
-           ) do
-      add_validated_block(block, prev_block_chain_state, new_chain_state, loop_micro_block)
+           ),
+         {:ok, generation} <- get_generation_by_height(height),
+         pof <- PoF.check_for_fraud(generation, block.header) do
+      add_validated_block(
+        block,
+        prev_block_chain_state,
+        new_chain_state,
+        pof,
+        loop_micro_block
+      )
     else
       err ->
         err
@@ -274,12 +293,13 @@ defmodule Aecore.Chain.Worker do
           KeyBlock.t() | MicroBlock.t(),
           Chainstate.t(),
           Chainstate.t(),
+          PoF.t(),
           boolean()
         ) :: :ok
-  defp add_validated_block(block, prev_chain_state, chain_state, loop_micro_block) do
+  defp add_validated_block(block, prev_chain_state, chain_state, pof, loop_micro_block) do
     GenServer.call(
       __MODULE__,
-      {:add_validated_block, block, prev_chain_state, chain_state, loop_micro_block}
+      {:add_validated_block, block, prev_chain_state, chain_state, pof, loop_micro_block}
     )
   end
 
@@ -376,7 +396,7 @@ defmodule Aecore.Chain.Worker do
         {:add_validated_block,
          %{
            header: %{prev_hash: prev_hash, height: height} = header
-         } = new_block, prev_chain_state, new_chain_state, loop_micro_blocks},
+         } = new_block, prev_chain_state, new_chain_state, pof, loop_micro_blocks},
         _from,
         %{
           blocks_data_map: blocks_data_map,
@@ -401,6 +421,7 @@ defmodule Aecore.Chain.Worker do
           new_total_diff = total_diff + Scientific.target_to_difficulty(target)
           {node_key, _} = Keys.keypair(:sign)
           is_leader = miner == node_key
+
           {new_total_diff, is_leader}
 
         %MicroBlock{txs: txs} ->
@@ -419,7 +440,6 @@ defmodule Aecore.Chain.Worker do
     # refs_list is generated so it contains n-th prev blocks for n-s being a power of two.
     # So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A].
     # This allows for log n finding of block with a given height.
-
     new_refs = refs(@max_refs, blocks_data_map, prev_hash)
 
     updated_blocks_data_map =
@@ -513,7 +533,13 @@ defmodule Aecore.Chain.Worker do
       genesis_chainstate = blocks_data_map[block_hash].chain_state
 
       spawn(fn ->
-        add_validated_block(genesis_block, genesis_chainstate, genesis_chainstate, false)
+        add_validated_block(
+          genesis_block,
+          genesis_chainstate,
+          genesis_chainstate,
+          :no_fraud,
+          false
+        )
       end)
     end
 
@@ -597,6 +623,20 @@ defmodule Aecore.Chain.Worker do
       end)
     else
       block_map
+    end
+  end
+
+  defp get_generation(blocks_acc, next_block_hash, key_block_hash) do
+    case get_block(next_block_hash) do
+      {:ok, %{header: %{prev_hash: prev_hash}} = block} ->
+        if prev_hash == key_block_hash do
+          [block | blocks_acc]
+        else
+          get_generation([block | blocks_acc], prev_hash, key_block_hash)
+        end
+
+      {:error, _} = err ->
+        err
     end
   end
 
