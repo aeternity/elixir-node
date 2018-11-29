@@ -590,6 +590,22 @@ defmodule Aecore.Channel.ChannelStatePeer do
           {:ok, ChannelStatePeer.t()} | error()
   def receive_fully_signed_tx(
         %ChannelStatePeer{
+          fsm_state: :open,
+          role: :delegate
+        } = peer_state,
+        tx
+      ) do
+    case process_fully_signed_tx(tx, peer_state) do
+      {:ok, %ChannelStatePeer{mutually_signed_tx: prev_mutually_signed_tx} = new_state} ->
+        {:ok, %ChannelStatePeer{new_state | mutually_signed_tx: [tx | prev_mutually_signed_tx]}}
+
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  def receive_fully_signed_tx(
+        %ChannelStatePeer{
           fsm_state: :awaiting_full_tx,
           highest_half_signed_tx: last_signed
         } = peer_state,

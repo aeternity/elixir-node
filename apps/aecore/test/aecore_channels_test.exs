@@ -397,17 +397,18 @@ defmodule AecoreChannelTest do
   test "Create channel, transfer twice, slash with old, delegate slashes with correct and settle",
        ctx do
     id = create_channel(ctx)
+    export_import_peer_state(id, &call_s1/1, &call_s3/1)
 
-    perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    tx = perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert :ok == call_s3({:receive_fully_signed_tx, tx})
     assert_offchain_state(id, 100, 200, 2)
 
     # prepare solo close but do not submit to pool
     solo_close_tx = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
 
-    perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
+    tx2 = perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
+    assert :ok == call_s3({:receive_fully_signed_tx, tx2})
     assert_offchain_state(id, 270, 30, 3)
-
-    export_import_peer_state(id, &call_s1/1, &call_s3/1)
 
     assert_custom_tx_succeeds(solo_close_tx)
 
@@ -758,6 +759,8 @@ defmodule AecoreChannelTest do
     %ChannelOffChainTx{} = fully_signed_transfer_tx
     assert :open === get_fsm_state(id, responder_fun)
     :ok = initiator_fun.({:receive_fully_signed_tx, fully_signed_transfer_tx})
+
+    fully_signed_transfer_tx
   end
 
   defp perform_withdraw(
