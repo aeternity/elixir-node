@@ -155,11 +155,8 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
       !ChannelStateOnChain.active?(channel) ->
         {:error, "#{__MODULE__}: Can't submit snapshot when channel is closing (use slash)"}
 
-      !ChannelStateOnChain.is_peer_or_delegate?(channel, sender) ->
-        {:error,
-         "#{__MODULE__}: Sender #{sender} is not a peer or delegate of the channel, peers are: #{
-           channel.initiator_pubkey
-         } and #{channel.responder_pubkey}, delegates are: #{channel.delegates} "}
+      !ChannelStateOnChain.is_peer?(channel, sender) ->
+        {:error, "#{__MODULE__}: Sender must be a party of the channel"}
 
       true ->
         ChannelStateOnChain.validate_snapshot(channel, offchain_tx)

@@ -24,7 +24,7 @@ defmodule Aecore.Channel.Worker do
 
   require Logger
 
-  @type role :: :initiator | :responder
+  @type role :: :initiator | :responder | :delegate
 
   @typedoc """
   State is a map channel_id -> channel_peer_state
@@ -312,11 +312,12 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Slashes channel. Creates slash Tx and adds it to the pool.
   """
-  @spec slash(binary(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
+  @spec slash(binary(), non_neg_integer(), non_neg_integer(), Keys.pubkey(), Keys.sign_priv_key()) ::
           :ok | error()
-  def slash(channel_id, fee, nonce, priv_key)
-      when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
-    GenServer.call(__MODULE__, {:slash, channel_id, fee, nonce, priv_key})
+  def slash(channel_id, fee, nonce, pub_key, priv_key)
+      when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(pub_key) and
+             is_binary(priv_key) do
+    GenServer.call(__MODULE__, {:slash, channel_id, fee, nonce, pub_key, priv_key})
   end
 
   @doc """
@@ -326,11 +327,12 @@ defmodule Aecore.Channel.Worker do
           SignedTx.t(),
           non_neg_integer(),
           non_neg_integer(),
+          Keys.pubkey(),
           Keys.sign_priv_key()
         ) :: :ok | error()
-  def slashed(%SignedTx{} = slash_tx, fee, nonce, priv_key)
-      when is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
-    GenServer.call(__MODULE__, {:slashed, slash_tx, fee, nonce, priv_key})
+  def slashed(%SignedTx{} = slash_tx, fee, nonce, pub_key, priv_key)
+      when is_integer(fee) and is_integer(nonce) and is_binary(pub_key) and is_binary(priv_key) do
+    GenServer.call(__MODULE__, {:slashed, slash_tx, fee, nonce, pub_key, priv_key})
   end
 
   @doc """
@@ -629,10 +631,11 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:slash, channel_id, fee, nonce, priv_key}, _from, state) do
+  def handle_call({:slash, channel_id, fee, nonce, pub_key, priv_key}, _from, state) do
     peer_state = Map.get(state, channel_id)
 
-    with {:ok, new_peer_state, tx} <- ChannelStatePeer.slash(peer_state, fee, nonce, priv_key),
+    with {:ok, new_peer_state, tx} <-
+           ChannelStatePeer.slash(peer_state, fee, nonce, pub_key, priv_key),
          :ok <- Pool.add_transaction(tx) do
       {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
     else
@@ -654,6 +657,7 @@ defmodule Aecore.Channel.Worker do
           } = slash_tx,
           fee,
           nonce,
+          pub_key,
           priv_key
         },
         _from,
@@ -672,7 +676,7 @@ defmodule Aecore.Channel.Worker do
       peer_state = Map.get(state, channel_id)
 
       {:ok, new_peer_state, tx} =
-        ChannelStatePeer.slashed(peer_state, slash_tx, fee, nonce, priv_key)
+        ChannelStatePeer.slashed(peer_state, slash_tx, fee, nonce, pub_key, priv_key)
 
       if tx != nil do
         case Pool.add_transaction(tx) do

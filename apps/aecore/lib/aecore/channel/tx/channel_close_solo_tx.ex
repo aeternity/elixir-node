@@ -173,7 +173,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
       !ChannelStateOnChain.active?(channel) ->
         {:error, "#{__MODULE__}: Can't solo close active channel. Use slash."}
 
-      sender != channel.initiator_pubkey && sender != channel.responder_pubkey ->
+      !ChannelStateOnChain.is_peer?(channel, sender) ->
         {:error, "#{__MODULE__}: Sender must be a party of the channel"}
 
       true ->

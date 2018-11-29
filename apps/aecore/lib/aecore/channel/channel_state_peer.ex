@@ -208,8 +208,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     Enum.reduce_while(offchain_tx_list_from_oldest, {:ok, initial_state}, fn tx, {:ok, state} ->
       case process_fully_signed_tx(tx, state) do
-        {:ok, _} = new_acc ->
-          {:cont, new_acc}
+        {:ok, %ChannelStatePeer{mutually_signed_tx: prev_mutually_signed_tx} = new_state} ->
+          {:cont,
+           {:ok,
+            %ChannelStatePeer{new_state | mutually_signed_tx: [tx | prev_mutually_signed_tx]}}}
 
         {:error, _} = err ->
           {:halt, err}
@@ -233,21 +235,19 @@ defmodule Aecore.Channel.ChannelStatePeer do
     mutually_signed_tx
   end
 
-  @doc """
-    Calculates the state hash of the offchain chainstate after applying the transaction.
-    Only basic verification is done.
-  """
+  # Calculates the state hash of the offchain chainstate after applying the transaction.
+  # Only basic verification is done.
   @spec calculate_next_state_hash_for_new_tx(
           ChannelTransaction.channel_tx(),
           ChannelStatePeer.t()
         ) :: {:ok, binary()} | error()
-  def calculate_next_state_hash_for_new_tx(
-        tx,
-        %ChannelStatePeer{
-          channel_reserve: channel_reserve,
-          offchain_chainstate: offchain_chainstate
-        } = peer_state
-      ) do
+  defp calculate_next_state_hash_for_new_tx(
+         tx,
+         %ChannelStatePeer{
+           channel_reserve: channel_reserve,
+           offchain_chainstate: offchain_chainstate
+         } = peer_state
+       ) do
     if ChannelTransaction.sequence(tx) <= ChannelStatePeer.sequence(peer_state) do
       {:error,
        "#{__MODULE__}: Too small sequence in tx. Received sequence(#{
@@ -279,6 +279,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
           non_neg_integer(),
           Channel.role()
         ) :: ChannelStatePeer.t()
+  def initialize(_, _, _, _, _, :delegate) do
+    {:error, "#{__MODULE__}: Delegate can only load channel from open or txs list"}
+  end
+
   def initialize(
         temporary_id,
         initiator_pubkey,
@@ -545,11 +549,17 @@ defmodule Aecore.Channel.ChannelStatePeer do
           Keys.sign_priv_key(),
           map()
         ) :: {:ok, ChannelStatePeer.t(), ChannelTransaction.signed_tx()} | error()
+  def receive_half_signed_tx(_, _, _, _opts \\ %{})
+
+  def receive_half_signed_tx(%ChannelStatePeer{role: :delegate}, _, _, _) do
+    {:error, "#{__MODULE__}: Deleagte can't handle half_signed_txs"}
+  end
+
   def receive_half_signed_tx(
         %ChannelStatePeer{fsm_state: :open} = peer_state,
         tx,
         privkey,
-        opts \\ %{}
+        opts
       ) do
     with :ok <-
            ChannelTransaction.half_signed_preprocess_check(
@@ -580,6 +590,22 @@ defmodule Aecore.Channel.ChannelStatePeer do
           {:ok, ChannelStatePeer.t()} | error()
   def receive_fully_signed_tx(
         %ChannelStatePeer{
+          fsm_state: :open,
+          role: :delegate
+        } = peer_state,
+        tx
+      ) do
+    case process_fully_signed_tx(tx, peer_state) do
+      {:ok, %ChannelStatePeer{mutually_signed_tx: prev_mutually_signed_tx} = new_state} ->
+        {:ok, %ChannelStatePeer{new_state | mutually_signed_tx: [tx | prev_mutually_signed_tx]}}
+
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  def receive_fully_signed_tx(
+        %ChannelStatePeer{
           fsm_state: :awaiting_full_tx,
           highest_half_signed_tx: last_signed
         } = peer_state,
@@ -601,7 +627,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   def receive_fully_signed_tx(%ChannelStatePeer{fsm_state: fsm_state}, _) do
-    {:error, "Unexpected 'receive_fully_signed_tx' call. Current state is: #{fsm_state}"}
+    {:error,
+     "#{__MODULE__}: Unexpected 'receive_fully_signed_tx' call. Current state is: #{fsm_state}"}
   end
 
   @doc """
@@ -644,6 +671,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
   """
   @spec transfer(ChannelStatePeer.t(), non_neg_integer(), Keys.sign_priv_key()) ::
           {:ok, ChannelStatePeer.t(), ChannelOffChainTx.t()} | error()
+  def transfer(%ChannelStatePeer{role: :delegate}, _, _) do
+    {:error, "#{__MODULE__}: Delegate can't transfer"}
+  end
+
   def transfer(
         %ChannelStatePeer{fsm_state: :open, channel_id: channel_id} = peer_state,
         amount,
@@ -685,6 +716,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
           non_neg_integer(),
           Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
+  def withdraw(%ChannelStatePeer{role: :delegate}, _, _, _, _) do
+    {:error, "#{__MODULE__}: Delegate can't withdraw"}
+  end
+
   def withdraw(
         %ChannelStatePeer{fsm_state: :open, channel_id: channel_id} = peer_state,
         amount,
@@ -735,6 +770,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
           non_neg_integer(),
           Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
+  def deposit(%ChannelStatePeer{role: :delegate}, _, _, _, _) do
+    {:error, "#{__MODULE__}: Delegate can't deposit"}
+  end
+
   def deposit(
         %ChannelStatePeer{fsm_state: :open, channel_id: channel_id} = peer_state,
         amount,
@@ -779,6 +818,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
   Retrieves our offchain account balance from the latest offchain chainstate
   """
   @spec our_offchain_account_balance(ChannelStatePeer.t()) :: non_neg_integer()
+  def our_offchain_account_balance(%ChannelStatePeer{role: :delegate}) do
+    throw({:error, "#{__MODULE__}: Delagate doesn't have a balance"})
+  end
+
   def our_offchain_account_balance(
         %ChannelStatePeer{offchain_chainstate: %Chainstate{accounts: accounts}} = peer_state
       ) do
@@ -789,6 +832,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
   Retrieves the foreign offchain account balance from the latest offchain chainstate
   """
   @spec foreign_offchain_account_balance(ChannelStatePeer.t()) :: non_neg_integer()
+  def foreign_offchain_account_balance(%ChannelStatePeer{role: :delegate}) do
+    throw({:error, "#{__MODULE__}: There is no foreign peer for delegate"})
+  end
+
   def foreign_offchain_account_balance(
         %ChannelStatePeer{offchain_chainstate: %Chainstate{accounts: accounts}} = peer_state
       ) do
@@ -865,6 +912,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
           non_neg_integer(),
           Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
+  def close(%ChannelStatePeer{role: :delegate}, _, _, _) do
+    {:error, "#{__MODULE__}: Delegate can't close"}
+  end
+
   def close(
         %ChannelStatePeer{
           fsm_state: :open,
@@ -927,6 +978,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
           {non_neg_integer(), non_neg_integer()},
           Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
+  def receive_close_tx(%ChannelStatePeer{role: :delegate}, _, _, _, _) do
+    {:error, "#{__MODULE__}: Deleagte can't receive close tx"}
+  end
+
   def receive_close_tx(
         %ChannelStatePeer{
           fsm_state: :open,
@@ -1002,6 +1057,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
           non_neg_integer(),
           Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
+  def solo_close(%ChannelStatePeer{role: :delegate}, _, _, _) do
+    {:error, "#{__MODULE__}: Delagate can't solo close"}
+  end
+
   def solo_close(
         %ChannelStatePeer{
           channel_id: channel_id,
@@ -1041,13 +1100,19 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Creates a slash transaction from the most recent offchain chainstate.
   """
-  @spec slash(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
-          {:ok, ChannelStatePeer.t(), SignedTx.t()}
+  @spec slash(
+          ChannelStatePeer.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          Keys.pubkey(),
+          Keys.sign_priv_key()
+        ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()}
   def slash(
         %ChannelStatePeer{channel_id: channel_id, mutually_signed_tx: [most_recent_tx | _]} =
           peer_state,
         fee,
         nonce,
+        pubkey,
         priv_key
       ) do
     new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
@@ -1060,7 +1125,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           poi: dispute_poi_for_latest_state(peer_state),
           offchain_tx: ChannelTransaction.dispute_payload(most_recent_tx)
         },
-        our_pubkey(peer_state),
+        pubkey,
         fee,
         nonce
       )
@@ -1077,6 +1142,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           SignedTx.t(),
           non_neg_integer(),
           non_neg_integer(),
+          Keys.pubkey(),
           Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t() | nil} | error()
   def slashed(
@@ -1090,6 +1156,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         },
         fee,
         nonce,
+        pubkey,
         privkey
       ) do
     slash_hash =
@@ -1105,7 +1172,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     # Because SlashTx/SoloTx was mined the state hash present here must have been verified onchain
     # If it was verified onchain then we needed to sign it - In conclusion we can rely on the state hash
     if slash_hash != ChannelTransaction.unsigned_payload(most_recent_tx).state_hash do
-      slash(peer_state, fee, nonce, privkey)
+      slash(peer_state, fee, nonce, pubkey, privkey)
     else
       new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
       {:ok, new_peer_state, nil}
@@ -1118,6 +1185,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
   """
   @spec snapshot(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           {:ok, SignedTx.t()} | error()
+  def snapshot(%ChannelStatePeer{role: :delegate}, _, _, _) do
+    {:error, "#{__MODULE__}: Delegate can't snapshot"}
+  end
+
   def snapshot(
         %ChannelStatePeer{
           fsm_state: state,
@@ -1180,6 +1251,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
   """
   @spec settle(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           {:ok, SignedTx.t()} | error()
+  def settle(%ChannelStatePeer{role: :delegate}, _, _, _) do
+    {:error, "#{__MODULE__}: Deleagte can't settle"}
+  end
+
   def settle(
         %ChannelStatePeer{
           channel_id: channel_id,

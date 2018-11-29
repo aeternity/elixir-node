@@ -26,6 +26,7 @@ defmodule AecoreChannelTest do
 
   @s1_name {:global, :Channels_S1}
   @s2_name {:global, :Channels_S2}
+  @s3_name {:global, :Channels_S3}
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -60,8 +61,10 @@ defmodule AecoreChannelTest do
 
     GenServer.start_link(Channels, %{}, name: @s1_name)
     GenServer.start_link(Channels, %{}, name: @s2_name)
+    GenServer.start_link(Channels, %{}, name: @s3_name)
     assert %{} == call_s1(:get_all_channels)
     assert %{} == call_s2(:get_all_channels)
+    assert %{} == call_s3(:get_all_channels)
 
     %{
       pk1: pk1,
@@ -407,7 +410,7 @@ defmodule AecoreChannelTest do
     assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
              false
 
-    assert :ok == call_s1({:slashed, solo_close_tx, 10, 2, ctx.sk1})
+    assert :ok == call_s1({:slashed, solo_close_tx, 10, 2, ctx.pk1, ctx.sk1})
 
     TestUtils.assert_transactions_mined()
 
@@ -425,6 +428,54 @@ defmodule AecoreChannelTest do
     TestUtils.assert_transactions_mined()
 
     TestUtils.assert_balance(ctx.pk1, 40 - 20 + 270)
+    TestUtils.assert_balance(ctx.pk2, 50 - 15 + 30)
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+  end
+
+  @tag :channels
+  @tag timeout: 240_000
+  test "Create channel, transfer twice, slash with old, delegate slashes with correct and settle",
+       ctx do
+    id = create_channel(ctx)
+    export_import_peer_state(id, &call_s1/1, &call_s3/1)
+
+    tx = perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert :ok == call_s3({:receive_fully_signed_tx, tx})
+    assert_offchain_state(id, 100, 200, 2)
+
+    # prepare solo close but do not submit to pool
+    solo_close_tx = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+
+    tx2 = perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
+    assert :ok == call_s3({:receive_fully_signed_tx, tx2})
+    assert_offchain_state(id, 270, 30, 3)
+
+    assert_custom_tx_succeeds(solo_close_tx)
+
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
+             false
+
+    assert :ok == call_s3({:slashed, solo_close_tx, 10, 1, ctx.pk3, ctx.sk3})
+    [slash] = Map.values(Pool.get_pool())
+
+    TestUtils.assert_transactions_mined()
+    assert :ok == call_s1({:slashed, slash, 10, 1, ctx.pk1, ctx.sk1})
+
+    {:ok, s1_state} = call_s1({:get_channel, id})
+    {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 2, ctx.sk1)
+    assert :ok == Pool.add_transaction(settle_tx)
+
+    Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Pool.get_pool()) == false
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 1
+
+    TestUtils.assert_balance(ctx.pk1, 40)
+    TestUtils.assert_balance(ctx.pk2, 50 - 15)
+    TestUtils.assert_balance(ctx.pk3, 200 - 10)
+
+    TestUtils.assert_transactions_mined()
+
+    TestUtils.assert_balance(ctx.pk1, 40 - 10 + 270)
     TestUtils.assert_balance(ctx.pk2, 50 - 15 + 30)
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
   end
@@ -480,7 +531,7 @@ defmodule AecoreChannelTest do
     snapshot_solo_tx = prepare_snapshot(id, &call_s2/1, 15, 2, ctx.sk2)
 
     # slashing an active channel fails
-    slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+    slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.pk2, ctx.sk2)
     assert_custom_tx_fails(slash_tx)
 
     assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
@@ -618,6 +669,9 @@ defmodule AecoreChannelTest do
 
     assert ChannelStatePeer.calculate_state_hash(responder_state) ===
              ChannelStatePeer.calculate_state_hash(imported_responder_state)
+
+    assert tx_list === ChannelStatePeer.get_signed_tx_list(imported_initiator_state)
+    assert tx_list === ChannelStatePeer.get_signed_tx_list(imported_responder_state)
   end
 
   @tag :channels
@@ -630,7 +684,7 @@ defmodule AecoreChannelTest do
     perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
     [channel_create_tx] = ChannelStatePeer.get_signed_tx_list(initiator_state)
     solo_close_tx = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
-    slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+    slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.pk2, ctx.sk2)
     snapshot_tx = prepare_snapshot(id, &call_s2/1, 15, 1, ctx.sk2)
 
     {:ok, settle_tx} =
@@ -745,6 +799,8 @@ defmodule AecoreChannelTest do
     %ChannelOffChainTx{} = fully_signed_transfer_tx
     assert :open === get_fsm_state(id, responder_fun)
     :ok = initiator_fun.({:receive_fully_signed_tx, fully_signed_transfer_tx})
+
+    fully_signed_transfer_tx
   end
 
   defp perform_withdraw(
@@ -887,9 +943,10 @@ defmodule AecoreChannelTest do
     assert responder_channel_balance == get_our_balance(id, responder_fun)
   end
 
-  defp prepare_slash_tx(id, peer_fun, fee, nonce, priv_key) when is_function(peer_fun, 1) do
+  defp prepare_slash_tx(id, peer_fun, fee, nonce, pub_key, priv_key)
+       when is_function(peer_fun, 1) do
     {:ok, state} = peer_fun.({:get_channel, id})
-    {:ok, _, slash_tx} = ChannelStatePeer.slash(state, fee, nonce, priv_key)
+    {:ok, _, slash_tx} = ChannelStatePeer.slash(state, fee, nonce, pub_key, priv_key)
     slash_tx
   end
 
@@ -903,6 +960,13 @@ defmodule AecoreChannelTest do
     {:ok, state} = peer_fun.({:get_channel, id})
     {:ok, slash_tx} = ChannelStatePeer.snapshot(state, fee, nonce, priv_key)
     slash_tx
+  end
+
+  defp export_import_peer_state(id, from_server, to_server) do
+    {:ok, from_state} = from_server.({:get_channel, id})
+    tx_list = ChannelStatePeer.get_signed_tx_list(from_state)
+    {:ok, to_state} = ChannelStatePeer.from_signed_tx_list(tx_list, :delegate)
+    to_server.({:import_channel, id, to_state})
   end
 
   defp assert_custom_tx_fails(%SignedTx{} = tx) do
@@ -924,6 +988,10 @@ defmodule AecoreChannelTest do
 
   defp call_s2(call) do
     GenServer.call(@s2_name, call)
+  end
+
+  defp call_s3(call) do
+    GenServer.call(@s3_name, call)
   end
 
   defp get_fsm_state_s1(id) do
