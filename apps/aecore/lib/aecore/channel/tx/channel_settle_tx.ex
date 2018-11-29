@@ -153,6 +153,9 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
       channel == :none ->
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
+      !ChannelStateOnChain.is_peer?(channel, sender) ->
+        {:error, "#{__MODULE__}: Sender must be a party of the channel"}
+
       !ChannelStateOnChain.settled?(channel, block_height) ->
         {:error, "#{__MODULE__}: Channel isn't settled"}
 

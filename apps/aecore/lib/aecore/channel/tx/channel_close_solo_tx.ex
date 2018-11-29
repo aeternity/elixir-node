@@ -173,8 +173,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
       !ChannelStateOnChain.active?(channel) ->
         {:error, "#{__MODULE__}: Can't solo close active channel. Use slash."}
 
-      !ChannelStateOnChain.is_peer_or_delegate?(channel, sender) ->
-        {:error, "#{__MODULE__}: Sender must be a party of the channel or a delagate"}
+      !ChannelStateOnChain.is_peer?(channel, sender) ->
+        {:error, "#{__MODULE__}: Sender must be a party of the channel"}
 
       true ->
         ChannelStateOnChain.validate_slashing(channel, offchain_tx, poi)

@@ -1064,7 +1064,6 @@ defmodule Aecore.Channel.ChannelStatePeer do
           poi: dispute_poi_for_latest_state(peer_state),
           offchain_tx: offchain_tx
         },
-        # TODO some delegate handling
         our_pubkey(peer_state),
         fee,
         nonce
