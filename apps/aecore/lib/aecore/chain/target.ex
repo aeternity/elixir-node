@@ -3,7 +3,7 @@ defmodule Aecore.Chain.Target do
   Contains functions used to calculate the PoW difficulty.
   """
 
-  alias Aecore.Chain.{KeyBlock, KeyHeader, Block, Header}
+  alias Aecore.Chain.{KeyBlock, KeyHeader}
   alias Aecore.Governance.GovernanceConstants
   alias Aeutil.Scientific
 
@@ -14,7 +14,7 @@ defmodule Aecore.Chain.Target do
   @spec highest_target_scientific :: non_neg_integer()
   def highest_target_scientific, do: @highest_target_scientific
 
-  @spec calculate_next_target(integer(), list(Block.t())) :: integer()
+  @spec calculate_next_target(integer(), list(KeyBlock.t())) :: integer()
   def calculate_next_target(timestamp, previous_blocks) do
     sorted_blocks =
       Enum.sort(previous_blocks, fn block1, block2 ->
@@ -38,7 +38,7 @@ defmodule Aecore.Chain.Target do
     min(@highest_target_scientific, Scientific.integer_to_scientific(new_target_int))
   end
 
-  @spec calculate_distance(Block.t(), integer()) :: float()
+  @spec calculate_distance(KeyBlock.t(), integer()) :: float()
   defp calculate_distance(%KeyBlock{header: %KeyHeader{time: time}}, timestamp) do
     max(1, timestamp - time)
   end

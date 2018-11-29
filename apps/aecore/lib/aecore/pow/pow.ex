@@ -15,6 +15,20 @@ defmodule Aecore.Pow.Pow do
     pow_module().verify(header)
   end
 
+  @spec solution_valid?(KeyHeader.t()) :: boolean()
+  def solution_valid?(%KeyHeader{} = header) do
+    server_pid = self()
+    work = fn -> verify(header) end
+
+    Task.start(fn ->
+      send(server_pid, {:worker_reply, self(), work.()})
+    end)
+
+    receive do
+      {:worker_reply, _from, verified?} -> verified?
+    end
+  end
+
   @doc """
   Calls generate of appropriate module
   """

@@ -69,7 +69,7 @@ defmodule Aecore.Sync.Jobs do
   defp enqueue_strategy(:block, block, peer_id) do
     # ser_block = PeerConnection.gossip_serialize_block(block)
     # TODO Adjust serializations for peer connection to handle Microblocks and Keyblocks
-    fn -> Sync.forward_block(ser_block, peer_id) end
+    fn -> Sync.forward_block(block, peer_id) end
   end
 
   defp enqueue_strategy(:tx, tx, peer_id) do

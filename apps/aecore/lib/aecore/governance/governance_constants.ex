@@ -5,6 +5,8 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @protocol_version 29
 
+  @micro_block_distance 3000
+
   @number_of_blocks_for_target_recalculation 10
 
   # 60sec * 1000ms * 5 = 300_000ms
@@ -46,6 +48,9 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @spec protocol_version :: non_neg_integer()
   def protocol_version, do: @protocol_version
+
+  @spec micro_block_distance :: non_neg_integer()
+  def micro_block_distance, do: @micro_block_distance
 
   @spec number_of_blocks_for_target_recalculation :: non_neg_integer()
   def number_of_blocks_for_target_recalculation, do: @number_of_blocks_for_target_recalculation
