@@ -1,7 +1,7 @@
 [![Travis Build](https://travis-ci.org/aeternity/elixir-node.svg?branch=master)](https://travis-ci.org/aeternity/elixir-node)
 
 # CURRENTLY *NOT COMPATIBLE* TO THE AETERNITY NETWORK 
-This implementation aims to be a full node using the aeternity specification, in the current state this is not ready yet and should never be used to join the aeternity network.
+This implementation aims to be a aims to be a full node that complies with the aeternity specification, in the current state this is not ready yet and should never be used to join the aeternity network.
 
 # Aeternity Elixir Full Node
 This is an elixir full node implementation of the aeternity specification.
