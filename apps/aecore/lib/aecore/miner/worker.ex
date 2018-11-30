@@ -302,12 +302,22 @@ defmodule Aecore.Miner.Worker do
     )
   end
 
-  @spec generate_and_add_micro_block(boolean()) :: :ok | {:error, String.t()}
-  def generate_and_add_micro_block(loop_micro_blocks) do
-    top_block = Chain.top_block()
-    prev_hash = Header.hash(top_block.header)
-    prev_key_hash = Header.top_key_block_hash(top_block.header)
-
+  @spec generate_and_add_micro_block(
+          non_neg_integer(),
+          binary(),
+          binary(),
+          Chainstate.t(),
+          non_neg_integer(),
+          boolean()
+        ) :: :ok | {:error, String.t()}
+  def generate_and_add_micro_block(
+        candidate_height,
+        prev_hash,
+        prev_key_hash,
+        chain_state,
+        previous_time,
+        loop_micro_blocks
+      ) do
     minimum_distance =
       if prev_hash == prev_key_hash do
         @minimum_distance_from_key_block
@@ -318,10 +328,6 @@ defmodule Aecore.Miner.Worker do
     :timer.sleep(minimum_distance)
     txs_list = get_pool_values()
     ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
-
-    {:ok, chain_state} = Chain.chain_state(prev_hash)
-
-    candidate_height = Chain.top_block().header.height
 
     valid_txs_by_chainstate =
       Chainstate.get_valid_txs(ordered_txs_list, chain_state, candidate_height)
@@ -344,14 +350,8 @@ defmodule Aecore.Miner.Worker do
 
     # if the previous block is a key block - the time should just be higher,
     # if it's a micro block - atleast 3 seconds higher
-    minimum_distance =
-      if prev_hash == prev_key_hash do
-        @minimum_distance_from_key_block
-      else
-        GovernanceConstants.micro_block_distance()
-      end
 
-    time = max(current_time, top_block.header.time + minimum_distance)
+    time = max(current_time, previous_time + minimum_distance)
 
     header = %MicroHeader{
       height: candidate_height,

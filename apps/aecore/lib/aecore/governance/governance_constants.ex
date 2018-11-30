@@ -7,7 +7,7 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @micro_block_distance 3000
 
-  @number_of_blocks_for_target_recalculation 10
+  @number_of_blocks_for_target_recalculation 17
 
   # 60sec * 1000ms * 5 = 300_000ms
   @expected_mine_rate_ms 300_000

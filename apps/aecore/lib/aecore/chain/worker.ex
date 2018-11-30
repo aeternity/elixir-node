@@ -375,7 +375,7 @@ defmodule Aecore.Chain.Worker do
   def handle_call(
         {:add_validated_block,
          %{
-           header: %{prev_hash: prev_hash, height: height} = header
+           header: %{prev_hash: prev_hash, height: height, time: time} = header
          } = new_block, prev_chain_state, new_chain_state, loop_micro_blocks},
         _from,
         %{
@@ -412,7 +412,14 @@ defmodule Aecore.Chain.Worker do
 
     if loop_micro_blocks && new_node_is_leader do
       spawn(fn ->
-        Miner.generate_and_add_micro_block(loop_micro_blocks)
+        Miner.generate_and_add_micro_block(
+          height,
+          new_block_hash,
+          HeaderUtils.top_key_block_hash(header),
+          new_chain_state,
+          time,
+          loop_micro_blocks
+        )
       end)
     end
 
