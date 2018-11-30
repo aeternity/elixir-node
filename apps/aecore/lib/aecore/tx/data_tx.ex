@@ -31,6 +31,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Channel.Tx.ChannelSettleTx
           | Aecore.Channel.Tx.ChannelWithdrawTx
           | Aecore.Channel.Tx.ChannelDepositTx
+          | Aecore.Channel.Tx.ChannelSnapshotSoloTx
 
   @typedoc "Structure of a transaction that may be added to the blockchain"
   @type payload ::
@@ -53,6 +54,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Channel.Tx.ChannelSettleTx.t()
           | Aecore.Channel.Tx.ChannelWithdrawTx.t()
           | Aecore.Channel.Tx.ChannelDepositTx.t()
+          | Aecore.Channel.Tx.ChannelSnapshotSoloTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -102,7 +104,8 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Channel.Tx.ChannelSlashTx,
       Aecore.Channel.Tx.ChannelSettleTx,
       Aecore.Channel.Tx.ChannelWithdrawTx,
-      Aecore.Channel.Tx.ChannelDepositTx
+      Aecore.Channel.Tx.ChannelDepositTx,
+      Aecore.Channel.Tx.ChannelSnapshotSoloTx
     ]
   end
 
@@ -318,9 +321,9 @@ defmodule Aecore.Tx.DataTx do
       tx_type_preprocess_check != :ok ->
         tx_type_preprocess_check
 
-      DataTx.ttl(tx) < block_height ->
+      ttl(tx) < block_height ->
         {:error,
-         "#{__MODULE__}: Invalid or expired TTL value: #{DataTx.ttl(tx)}, with given block's height: #{
+         "#{__MODULE__}: Invalid or expired TTL value: #{ttl(tx)}, with given block's height: #{
            block_height
          }"}
 

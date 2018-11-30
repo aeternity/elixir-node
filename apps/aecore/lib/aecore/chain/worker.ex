@@ -423,6 +423,8 @@ defmodule Aecore.Chain.Worker do
       end)
     end
 
+    :ok = Pool.garbage_collection(height)
+
     # refs_list is generated so it contains n-th prev blocks for n-s being a power of two.
     # So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A].
     # This allows for log n finding of block with a given height.

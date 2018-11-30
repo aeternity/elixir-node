@@ -11,7 +11,8 @@ defmodule Aecore.Channel.Worker do
     ChannelCloseSoloTx,
     ChannelSlashTx,
     ChannelSettleTx,
-    ChannelCreateTx
+    ChannelCreateTx,
+    ChannelSnapshotSoloTx
   }
 
   alias Aecore.Keys
@@ -65,6 +66,11 @@ defmodule Aecore.Channel.Worker do
 
   def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelSettleTx}} = tx) do
     closed(tx)
+  end
+
+  def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelSnapshotSoloTx}} = _tx) do
+    # ChannelSnapshotSoloTx requires no action
+    :ok
   end
 
   def new_tx_mined(%SignedTx{}) do
@@ -123,14 +129,24 @@ defmodule Aecore.Channel.Worker do
           binary(),
           Keys.pubkey(),
           Keys.pubkey(),
+          list(Keys.pubkey()),
           role(),
           non_neg_integer()
         ) :: :ok | error()
-  def initialize(temporary_id, initiator_pubkey, responder_pubkey, role, channel_reserve)
-      when is_binary(temporary_id) and is_atom(role) and is_integer(channel_reserve) do
+  def initialize(
+        temporary_id,
+        initiator_pubkey,
+        responder_pubkey,
+        delegates,
+        role,
+        channel_reserve
+      )
+      when is_binary(temporary_id) and is_atom(role) and is_integer(channel_reserve) and
+             is_list(delegates) do
     GenServer.call(
       __MODULE__,
-      {:initialize, temporary_id, initiator_pubkey, responder_pubkey, role, channel_reserve}
+      {:initialize, temporary_id, initiator_pubkey, responder_pubkey, delegates, role,
+       channel_reserve}
     )
   end
 
@@ -342,6 +358,24 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
+  Submits a snapshot of the most recent state
+  """
+  @spec snapshot(binary(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
+          :ok | error()
+  def snapshot(channel_id, fee, nonce, priv_key)
+      when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
+    GenServer.call(__MODULE__, {:snapshot, channel_id, fee, nonce, priv_key})
+  end
+
+  @doc """
+  Notifies the channel manager about a mined snapshot tx.
+  """
+  @spec snapshot_mined(SignedTx.t()) :: :ok | error()
+  def snapshot_mined(%SignedTx{} = snapshot_tx) do
+    GenServer.call(__MODULE__, {:snapshot_mined, snapshot_tx})
+  end
+
+  @doc """
   Returns a map of all ChannelStatePeer objects.
   """
   @spec get_all_channels :: %{binary() => ChannelStatePeer.t()}
@@ -362,7 +396,8 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call(
-        {:initialize, temporary_id, initiator_pubkey, responder_pubkey, role, channel_reserve},
+        {:initialize, temporary_id, initiator_pubkey, responder_pubkey, delegates, role,
+         channel_reserve},
         _from,
         state
       ) do
@@ -371,6 +406,7 @@ defmodule Aecore.Channel.Worker do
         temporary_id,
         initiator_pubkey,
         responder_pubkey,
+        delegates,
         channel_reserve,
         role
       )
@@ -651,6 +687,39 @@ defmodule Aecore.Channel.Worker do
       end
     else
       {:reply, {:error, "#{__MODULE__}: Unknown channel"}, state}
+    end
+  end
+
+  @doc """
+    Submits a snapshot of the most recent state of a channel
+  """
+  def handle_call({:snapshot, channel_id, fee, nonce, priv_key}, _from, state) do
+    peer_state = Map.get(state, channel_id)
+
+    with {:ok, tx} <- ChannelStatePeer.snapshot(peer_state, fee, nonce, priv_key),
+         :ok <- Pool.add_transaction(tx) do
+      {:reply, :ok, state}
+    else
+      {:error, _} = err ->
+        {:reply, err, state}
+
+      :error ->
+        {:reply, {:error, "#{__MODULE__}: Pool error"}, state}
+    end
+  end
+
+  def handle_call(
+        {:snapshot_mined, %SignedTx{data: %DataTx{payload: payload}} = tx},
+        _from,
+        state
+      ) do
+    %ChannelSnapshotSoloTx{channel_id: channel_id} = payload
+
+    if Map.has_key?(state, channel_id) do
+      new_peer_state = state |> Map.get(channel_id) |> ChannelStatePeer.snapshot_mined(tx)
+      {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
+    else
+      {:reply, :ok, state}
     end
   end
 

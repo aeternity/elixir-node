@@ -5,7 +5,7 @@ defmodule ElixirNode.Mixfile do
     [
       app: :elixir_node,
       apps_path: "apps",
-      version: "0.1.0",
+      version: "0.2.0",
       build_path: "./_build",
       config_path: "./config/config.exs",
       deps_path: "./deps",
@@ -56,7 +56,7 @@ defmodule ElixirNode.Mixfile do
       {:plug_cowboy, "~> 1.0"},
 
       # aecore deps, they are needed here, as we can only override umbrella-apps dependencies here (https://github.com/elixir-lang/elixir/issues/5232)
-      {:idna, github: "aeternity/erlang-idna", tag: "5.1.1", manager: :rebar, override: true},
+      {:idna, github: "aeternity/erlang-idna", tag: "6.0.0", manager: :rebar, override: true},
       {:ranch, github: "ninenines/ranch", tag: "1.4.0", override: true},
       {:ex_parameterized, "~> 1.3.2"}
     ]

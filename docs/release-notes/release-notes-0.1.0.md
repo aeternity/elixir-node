@@ -8,6 +8,43 @@ Other documents:
 
 Please let us know if you have any problems by [opening an issue](https://github.com/aeternity/elixir-node/issues).
 
+## Install dependencies
+
+### Ubuntu package
+
+The package requires a libsodium v1.0.16 as `libsodium.so.23` shared object/library.
+
+#### Ubuntu 18.04
+
+Ubuntu 18.04 ships with libsodium 1.0.16, thus it can be installed with `apt` package manager:
+
+```bash
+sudo apt-get install libsodium23
+```
+
+The Ubuntu release binaries are built with `libssl1.0.0` (default Ubuntu 18.04 version is 1.1) requirement that can be installed with:
+
+```bash
+sudo apt-get install libssl1.0.0
+```
+
+#### Ubuntu 16.04
+
+As Ubuntu 16.04 ships with older libsodium version than required, it must be installed from source.
+A C compiler and related tools must be installed beforehand by running:
+
+```bash
+sudo apt-get install build-essential
+```
+
+then the library:
+
+```bash
+wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.16.tar.gz
+tar -xf libsodium-1.0.16.tar.gz && cd libsodium-1.0.16
+./configure && make && sudo make install && sudo ldconfig
+```
+
 ## Retrieve the software for running a node
 A prebuilt release is available at https://github.com/aeternity/elixir-node/releases/tag/v0.1.0
 ## Running your node

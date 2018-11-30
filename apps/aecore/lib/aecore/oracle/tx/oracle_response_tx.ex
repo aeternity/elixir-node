@@ -12,6 +12,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Oracle.OracleStateTree
   alias Aecore.Tx.DataTx
+  alias Aeutil.Serialization
 
   @version 1
 
@@ -21,19 +22,21 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @typedoc "Expected structure for the OracleResponseTx Transaction"
   @type payload :: %{
           query_id: binary(),
-          response: String.t()
+          response: String.t(),
+          response_ttl: Oracle.relative_ttl()
         }
 
   @typedoc "Structure of the OracleResponseTx Transaction type"
   @type t :: %OracleResponseTx{
           query_id: binary(),
-          response: String.t()
+          response: String.t(),
+          response_ttl: Oracle.relative_ttl()
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate."
   @type tx_type_state() :: Chainstate.oracles()
 
-  defstruct [:query_id, :response]
+  defstruct [:query_id, :response, :response_ttl]
 
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
@@ -44,11 +47,13 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @spec init(payload()) :: OracleResponseTx.t()
   def init(%{
         query_id: query_id,
-        response: response
+        response: response,
+        response_ttl: response_ttl
       }) do
     %OracleResponseTx{
       query_id: query_id,
-      response: response
+      response: response,
+      response_ttl: response_ttl
     }
   end
 
@@ -107,7 +112,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     updated_interaction_objects = %{
       interaction_objects
       | response: response,
-        expires: interaction_objects.response_ttl + block_height,
+        expires: interaction_objects.response_ttl.ttl + block_height,
         has_response: true
     }
 
@@ -131,11 +136,12 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         accounts,
         oracles,
         _block_height,
-        %OracleResponseTx{response: response, query_id: query_id},
+        %OracleResponseTx{response: response, query_id: query_id, response_ttl: response_ttl},
         %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
         _context
       ) do
     tree_query_id = sender <> query_id
+    query = OracleStateTree.get_query(oracles, tree_query_id)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -150,10 +156,16 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       !OracleStateTree.exists_query?(oracles, tree_query_id) ->
         {:error, "#{__MODULE__}: No query with the ID: #{inspect(tree_query_id)}"}
 
-      OracleStateTree.get_query(oracles, tree_query_id).response != :undefined ->
+      query.response != :undefined ->
         {:error, "#{__MODULE__}: Query already answered"}
 
-      OracleStateTree.get_query(oracles, tree_query_id).oracle_address != sender ->
+      query.response_ttl != response_ttl ->
+        {:error,
+         "#{__MODULE__}: Invalid response_ttl #{inspect(response_ttl)}, expected #{
+           inspect(query.response_ttl)
+         }"}
+
+      query.oracle_address != sender ->
         {:error, "#{__MODULE__}: Query references a different oracle"}
 
       true ->
@@ -189,22 +201,29 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     referenced_query_response_ttl =
       OracleStateTree.get_query(oracles_tree, tree_query_id).response_ttl
 
-    ttl_fee >= Oracle.calculate_minimum_fee(referenced_query_response_ttl)
+    ttl_fee >= Oracle.calculate_minimum_fee(referenced_query_response_ttl.ttl)
   end
 
   @spec encode_to_list(OracleResponseTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%OracleResponseTx{query_id: query_id, response: response}, %DataTx{
-        senders: [sender],
-        nonce: nonce,
-        fee: fee,
-        ttl: ttl
-      }) do
+  def encode_to_list(
+        %OracleResponseTx{query_id: query_id, response: response, response_ttl: response_ttl},
+        %DataTx{
+          senders: [sender],
+          nonce: nonce,
+          fee: fee,
+          ttl: ttl
+        }
+      ) do
+    encoded_ttl_type = Serialization.encode_ttl_type(response_ttl)
+
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(nonce),
       query_id,
       response,
+      encoded_ttl_type,
+      :binary.encode_unsigned(response_ttl.ttl),
       :binary.encode_unsigned(fee),
       :binary.encode_unsigned(ttl)
     ]
@@ -216,12 +235,17 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         nonce,
         query_id,
         response,
+        encoded_response_ttl_type,
+        response_ttl_value,
         fee,
         ttl
       ]) do
+    response_ttl_type = Serialization.decode_ttl_type(encoded_response_ttl_type)
+
     payload = %{
       query_id: query_id,
-      response: response
+      response: response,
+      response_ttl: %{ttl: :binary.decode_unsigned(response_ttl_value), type: response_ttl_type}
     }
 
     DataTx.init_binary(

@@ -21,12 +21,14 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @type t :: %ChannelStateOnChain{
           initiator_pubkey: Keys.pubkey(),
           responder_pubkey: Keys.pubkey(),
+          delegates: list(Keys.pubkey()),
           total_amount: integer(),
           initiator_amount: integer(),
           responder_amount: integer(),
           lock_period: non_neg_integer(),
           closing_at: integer(),
           sequence: integer(),
+          solo_sequence: integer(),
           state_hash: binary(),
           channel_reserve: non_neg_integer()
         }
@@ -45,24 +47,28 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   # Parameters
   - initiator_pubkey
   - responder_pubkey
+  - delegates - list of delegates allowed to perform certain operations
   - total_amount - the total amount of tokens in the channel
   - initiator_amount - amount deposited by initiator in create_tx or from poi
   - responder_amount - amount deposited by responder in create_tx or from poi
   - lock_period - time before slashing is settled
   - closing_at - when != 0: block height when channel will be irrevocably closed
   - sequence - sequence of highest known fully signed offchain chainstate
+  - solo_sequence - when !=0: sequence of first force progresses
   - state_hash - root hash of last known offchain chainstate
   - channel_reserve - minimal amount of tokens held by the initiator or responder
   """
   defstruct [
     :initiator_pubkey,
     :responder_pubkey,
+    :delegates,
     :total_amount,
     :initiator_amount,
     :responder_amount,
     :lock_period,
     :closing_at,
     :sequence,
+    :solo_sequence,
     :state_hash,
     :channel_reserve
   ]
@@ -72,6 +78,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec create(
           Keys.pubkey(),
           Keys.pubkey(),
+          list(Keys.pubkey()),
           integer(),
           integer(),
           non_neg_integer(),
@@ -81,6 +88,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def create(
         initiator_pubkey,
         responder_pubkey,
+        delegates,
         initiator_amount,
         responder_amount,
         lock_period,
@@ -90,12 +98,14 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     %ChannelStateOnChain{
       initiator_pubkey: initiator_pubkey,
       responder_pubkey: responder_pubkey,
+      delegates: delegates,
       total_amount: initiator_amount + responder_amount,
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
       lock_period: lock_period,
       closing_at: 0,
       sequence: 0,
+      solo_sequence: 0,
       state_hash: state_hash,
       channel_reserve: channel_reserve
     }
@@ -135,6 +145,31 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         responder_pubkey: responder_pubkey
       }) do
     {initiator_pubkey, responder_pubkey}
+  end
+
+  @spec is_peer?(ChannelStateOnChain.t(), Keys.pubkey()) :: boolean()
+  def is_peer?(
+        %ChannelStateOnChain{
+          initiator_pubkey: initiator_pubkey,
+          responder_pubkey: responder_pubkey
+        },
+        pubkey
+      )
+      when is_binary(pubkey) do
+    pubkey in [initiator_pubkey, responder_pubkey]
+  end
+
+  @spec is_peer_or_delegate?(ChannelStateOnChain.t(), Keys.pubkey()) :: boolean()
+  def is_peer_or_delegate?(
+        %ChannelStateOnChain{
+          initiator_pubkey: initiator_pubkey,
+          responder_pubkey: responder_pubkey,
+          delegates: delegates
+        },
+        pubkey
+      )
+      when is_binary(pubkey) do
+    pubkey in [initiator_pubkey, responder_pubkey | delegates]
   end
 
   @doc """
@@ -238,7 +273,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
         channel.sequence >= offchain_tx.sequence ->
           {:error,
-           "#{__MODULE__}: OffChain state is too old, expected newer than #{channel.sequence}, got #{
+           "#{__MODULE__}: OffChainTx is too old, expected newer than #{channel.sequence}, got #{
              offchain_tx.sequence
            }"}
 
@@ -324,31 +359,21 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   @spec validate_withdraw(
           ChannelStateOnChain.t(),
-          Keys.pubkey(),
           non_neg_integer(),
           non_neg_integer()
         ) :: :ok | error()
   def validate_withdraw(
         %ChannelStateOnChain{
-          initiator_pubkey: initiator_pubkey,
-          responder_pubkey: responder_pubkey,
           total_amount: total_amount,
           sequence: sequence,
           channel_reserve: channel_reserve
         },
-        tx_account,
         tx_amount,
         tx_sequence
       ) do
     cond do
       sequence >= tx_sequence ->
         {:error, "Too old state - latest known sequence is #{sequence} but we got #{tx_sequence}"}
-
-      tx_account != initiator_pubkey and tx_account != responder_pubkey ->
-        {:error,
-         "Withdraw destination must be a party of this channel. Tried to withdraw from #{
-           tx_account
-         } but the parties are #{initiator_pubkey} and #{responder_pubkey}"}
 
       tx_amount < 0 ->
         {:error, "Withdraw of negative amount(#{tx_amount}) is forbidden"}
@@ -387,33 +412,22 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   @spec validate_deposit(
           ChannelStateOnChain.t(),
-          Keys.pubkey(),
           non_neg_integer(),
           non_neg_integer()
         ) :: :ok | error()
   def validate_deposit(
         %ChannelStateOnChain{
-          initiator_pubkey: initiator_pubkey,
-          responder_pubkey: responder_pubkey,
           sequence: sequence
         },
-        tx_account,
         tx_amount,
         tx_sequence
-      )
-      when is_binary(tx_account) do
+      ) do
     cond do
       sequence >= tx_sequence ->
         {:error, "Too old state - latest known sequence is #{sequence} but we got #{tx_sequence}"}
 
       tx_amount < 0 ->
         {:error, "Deposit of negative amount(#{tx_amount}) is forbidden"}
-
-      tx_account != initiator_pubkey and tx_account != responder_pubkey ->
-        {:error,
-         "Deposit destination must be a party of this channel. Tried to deposit tokens to #{
-           tx_account
-         } but the parties are #{initiator_pubkey} and #{responder_pubkey}"}
 
       true ->
         :ok
@@ -441,6 +455,41 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     }
   end
 
+  @doc """
+  Validates the payload of ChannelSnapshotSoloTx.
+  """
+  @spec validate_snapshot(ChannelStateOnChain.t(), ChannelOffChainTx.t()) ::
+          :ok | {:error, binary()}
+  def validate_snapshot(
+        %ChannelStateOnChain{} = channel,
+        %ChannelOffChainTx{} = offchain_tx
+      ) do
+    if channel.sequence < offchain_tx.sequence do
+      ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
+    else
+      {:error,
+       "#{__MODULE__}: OffChainTx is too old, expected newer than #{channel.sequence}, got #{
+         offchain_tx.sequence
+       }"}
+    end
+  end
+
+  @doc """
+  Applies the provided payload of ChannelSnapshotSoloTx to the state of the channel. The contents should be validated by &validate_snapshot/2
+  """
+  @spec apply_snapshot(ChannelStateOnChain.t(), ChannelOffChainTx.t()) :: ChannelStateOnChain.t()
+  def apply_snapshot(%ChannelStateOnChain{} = channel, %ChannelOffChainTx{
+        sequence: sequence,
+        state_hash: state_hash
+      }) do
+    %ChannelStateOnChain{
+      channel
+      | sequence: sequence,
+        state_hash: state_hash,
+        solo_sequence: 0
+    }
+  end
+
   @spec encode_to_list(ChannelStateOnChain.t()) :: list(binary())
   def encode_to_list(%ChannelStateOnChain{} = channel) do
     [
@@ -449,9 +498,12 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       Identifier.create_encoded_to_binary(channel.responder_pubkey, :account),
       :binary.encode_unsigned(channel.total_amount),
       :binary.encode_unsigned(channel.initiator_amount),
+      :binary.encode_unsigned(channel.responder_amount),
       :binary.encode_unsigned(channel.channel_reserve),
+      Identifier.create_encoded_to_binary_list(channel.delegates, :account),
       channel.state_hash,
       :binary.encode_unsigned(channel.sequence),
+      :binary.encode_unsigned(channel.solo_sequence),
       :binary.encode_unsigned(channel.lock_period),
       :binary.encode_unsigned(channel.closing_at)
     ]
@@ -463,29 +515,33 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         encoded_responder_pubkey,
         encoded_total_amount,
         encoded_initiator_amount,
+        encoded_responder_amount,
         channel_reserve,
+        encoded_delegates,
         state_hash,
         sequence,
+        solo_sequence,
         lock_period,
         closing_at
       ]) do
-    total_amount = :binary.decode_unsigned(encoded_total_amount)
-    initiator_amount = :binary.decode_unsigned(encoded_initiator_amount)
-
     with {:ok, initiator_pubkey} <-
            Identifier.decode_from_binary_to_value(encoded_initiator_pubkey, :account),
          {:ok, responder_pubkey} <-
-           Identifier.decode_from_binary_to_value(encoded_responder_pubkey, :account) do
+           Identifier.decode_from_binary_to_value(encoded_responder_pubkey, :account),
+         {:ok, delegates} <-
+           Identifier.decode_from_binary_list_to_value_list(encoded_delegates, :account) do
       {:ok,
        %ChannelStateOnChain{
          initiator_pubkey: initiator_pubkey,
          responder_pubkey: responder_pubkey,
-         total_amount: total_amount,
-         initiator_amount: initiator_amount,
-         responder_amount: total_amount - initiator_amount,
+         delegates: delegates,
+         total_amount: :binary.decode_unsigned(encoded_total_amount),
+         initiator_amount: :binary.decode_unsigned(encoded_initiator_amount),
+         responder_amount: :binary.decode_unsigned(encoded_responder_amount),
          lock_period: :binary.decode_unsigned(lock_period),
          closing_at: :binary.decode_unsigned(closing_at),
          sequence: :binary.decode_unsigned(sequence),
+         solo_sequence: :binary.decode_unsigned(solo_sequence),
          state_hash: state_hash,
          channel_reserve: :binary.decode_unsigned(channel_reserve)
        }}

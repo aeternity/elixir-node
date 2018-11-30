@@ -37,6 +37,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @type t :: %ChannelCreateTx{
           initiator_amount: non_neg_integer(),
           responder_amount: non_neg_integer(),
+          delegates: list(Keys.pubkey()),
           locktime: non_neg_integer(),
           state_hash: binary(),
           channel_reserve: non_neg_integer()
@@ -48,6 +49,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   # Parameters
   - initiator_amount: the amount that the first sender commits
   - responder_amount: the amount that the second sender commits
+  - delegates: channel delegates list
   - locktime: number of blocks for dispute settling
   - state_hash: root hash of the initial offchain chainstate
   - channel_reserve: minimal amount of tokens held by the initiator or responder
@@ -55,6 +57,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   defstruct [
     :initiator_amount,
     :responder_amount,
+    :delegates,
     :locktime,
     :state_hash,
     :channel_reserve
@@ -72,14 +75,16 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         responder_amount: responder_amount,
         locktime: locktime,
         state_hash: state_hash,
-        channel_reserve: channel_reserve
+        channel_reserve: channel_reserve,
+        delegates: delegates
       }) do
     %ChannelCreateTx{
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
       locktime: locktime,
       state_hash: state_hash,
-      channel_reserve: channel_reserve
+      channel_reserve: channel_reserve,
+      delegates: delegates
     }
   end
 
@@ -145,7 +150,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         %ChannelCreateTx{
           initiator_amount: initiator_amount,
           responder_amount: responder_amount,
-          locktime: locktime
+          locktime: locktime,
+          delegates: delegates
         } = tx,
         %DataTx{
           nonce: nonce,
@@ -169,6 +175,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       ChannelStateOnChain.create(
         initiator_pubkey,
         responder_pubkey,
+        delegates,
         initiator_amount,
         responder_amount,
         locktime,
@@ -264,6 +271,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       :binary.encode_unsigned(tx.locktime),
       :binary.encode_unsigned(data_tx.ttl),
       :binary.encode_unsigned(data_tx.fee),
+      Identifier.create_encoded_to_binary_list(tx.delegates, :account),
       tx.state_hash,
       :binary.encode_unsigned(data_tx.nonce)
     ]
@@ -279,19 +287,23 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         locktime,
         ttl,
         fee,
+        encoded_delegates,
         state_hash,
         encoded_nonce
       ]) do
     nonce = :binary.decode_unsigned(encoded_nonce)
 
     with {:ok, _} <- Identifier.decode_from_binary_to_value(encoded_initiator, :account),
-         {:ok, _} <- Identifier.decode_from_binary_to_value(encoded_responder, :account) do
+         {:ok, _} <- Identifier.decode_from_binary_to_value(encoded_responder, :account),
+         {:ok, delegates} <-
+           Identifier.decode_from_binary_list_to_value_list(encoded_delegates, :account) do
       payload = %{
         initiator_amount: :binary.decode_unsigned(initiator_amount),
         responder_amount: :binary.decode_unsigned(responder_amount),
         channel_reserve: :binary.decode_unsigned(channel_reserve),
         locktime: :binary.decode_unsigned(locktime),
-        state_hash: state_hash
+        state_hash: state_hash,
+        delegates: delegates
       }
 
       DataTx.init_binary(
