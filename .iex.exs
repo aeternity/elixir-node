@@ -1,5 +1,5 @@
 alias Aecore.Chain.Worker, as: Chain
-alias Aecore.Chain.{Chainstate, BlockValidation, Difficulty, Block, Header, Genesis}
+alias Aecore.Chain.{Chainstate, BlockValidation, Difficulty, MicroBlock, MicroHeader, Genesis}
 alias Aecore.Miner.Worker, as: Miner
 alias Aecore.Oracle.{Oracle, OracleStateTree}
 alias Aecore.Naming.{NameCommitment, NamingStateTree, NameUtil}

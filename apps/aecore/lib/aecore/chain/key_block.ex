@@ -35,4 +35,17 @@ defmodule Aecore.Chain.KeyBlock do
         :ok
     end
   end
+
+  @spec encode_to_binary(KeyBlock.t()) :: binary()
+  def encode_to_binary(%KeyBlock{header: header}) do
+    KeyHeader.encode_to_binary(header)
+  end
+
+  @spec decode_from_binary(binary()) :: {:ok, KeyBlock.t()} | {:error, String.t()}
+  def decode_from_binary(binary) when is_binary(binary) do
+    case KeyHeader.decode_from_binary(binary) do
+      {:ok, header} -> {:ok, %KeyBlock{header: header}}
+      {:error, _reason} = error -> error
+    end
+  end
 end

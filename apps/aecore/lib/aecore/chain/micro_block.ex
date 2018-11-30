@@ -8,9 +8,14 @@ defmodule Aecore.Chain.MicroBlock do
   alias Aecore.Tx.SignedTx
   alias Aecore.Keys
 
+  @rlp_tag 101
+  @header_version 1
+  @header_tag 0
+  @header_min_bytes 216
   @type t :: %MicroBlock{
           header: MicroHeader.t(),
           txs: list(SignedTx.t())
+          # pof: :no_fraud  TODO: implement PoF
         }
 
   defstruct [:header, :txs]
@@ -65,5 +70,65 @@ defmodule Aecore.Chain.MicroBlock do
       true ->
         :ok
     end
+  end
+
+  @spec encode_to_binary(MicroBlock.t()) :: binary()
+  def encode_to_binary(%MicroBlock{header: header, txs: txs}) do
+    encoded_header = MicroHeader.encode_to_binary(header)
+
+    encoded_txs =
+      for tx <- txs do
+        SignedTx.rlp_encode(tx)
+      end
+
+    # TODO implement PoF serializations
+    encoded_pof = <<>>
+    encoded_rest_data = ExRLP.encode([@rlp_tag, header.version, encoded_txs, encoded_pof])
+    <<encoded_header::binary, encoded_rest_data::binary>>
+  end
+
+  @spec decode_from_binary(binary()) :: {:ok, MicroBlock.t()} | {:error, String.t()}
+  def decode_from_binary(binary) when is_binary(binary) do
+    case partial_decode(binary) do
+      {:error, reason} -> {:error, "#{__MODULE__}: #{inspect(reason)}"}
+      {header, rest_data} -> decode_micro_block(rest_data, header)
+    end
+  end
+
+  defp partial_decode(<<@header_version::32, @header_tag::8, _::binary>> = binary) do
+    # TODO When PoF is implemented, this should be adjusted
+    header_size = @header_min_bytes
+
+    case binary do
+      <<header_bin::binary-size(header_size), rest::binary>> ->
+        case MicroHeader.decode_from_binary(header_bin) do
+          {:ok, header} -> {header, rest}
+          _ -> {:error, "#{__MODULE__}: Malformed header for #{__MODULE__} struct"}
+        end
+
+      _ ->
+        {:error, "#{__MODULE__}: Invalid micro header size"}
+    end
+  end
+
+  defp partial_decode(_) do
+    {:error, "#{__MODULE__}: Illegal serialization"}
+  end
+
+  defp decode_micro_block(rest_data, %MicroHeader{version: @header_version} = header) do
+    [_tag, _vsn, encoded_txs, _encoded_pof] = ExRLP.decode(rest_data)
+
+    decoded_txs_list =
+      for encoded_tx <- encoded_txs do
+        SignedTx.rlp_decode(encoded_tx)
+      end
+
+    # TODO implement PoF deserializations
+    # decoded_pof=  <<>>
+    {:ok, %MicroBlock{header: header, txs: decoded_txs_list}}
+  end
+
+  defp decode_micro_block(_rest_data, _header) do
+    {:error, "#{__MODULE__} Unknown micro block data"}
   end
 end
