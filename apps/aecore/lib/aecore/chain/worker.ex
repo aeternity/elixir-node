@@ -68,7 +68,8 @@ defmodule Aecore.Chain.Worker do
        top_height: 0,
        total_diff: Persistence.get_total_difficulty(),
        node_is_leader: false,
-       generation_fees: %{}
+       generation_fees: %{},
+       generation_prev_hashes: %{}
      }, 0}
   end
 
@@ -173,6 +174,15 @@ defmodule Aecore.Chain.Worker do
     |> Enum.member?(header_hash)
   end
 
+  @doc """
+  Contains all of the generation's micro block prev_hashes, used to check for
+  micro siblings (fraud)
+  """
+  @spec get_generation_prev_hashes :: map()
+  def get_generation_prev_hashes do
+    GenServer.call(__MODULE__, :get_generation_prev_hashes)
+  end
+
   @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, reason()}
   def get_header_by_height(height) do
     case get_block_info_by_height(height, nil, :block) do
@@ -262,7 +272,9 @@ defmodule Aecore.Chain.Worker do
 
   @spec add_block(KeyBlock.t() | MicroBlock.t(), boolean()) :: :ok | {:error, String.t()}
   def add_block(
-        %{header: %{prev_hash: prev_hash, prev_key_hash: prev_key_hash, height: height}} = block,
+        %{
+          header: %{prev_hash: prev_hash, prev_key_hash: prev_key_hash} = header
+        } = block,
         loop_micro_block
       ) do
     with {:ok, prev_block} <- get_block(prev_hash),
@@ -279,9 +291,10 @@ defmodule Aecore.Chain.Worker do
              prev_block_chain_state,
              blocks_for_target_calculation
            ),
-         pof <- PoF.check_for_fraud(new_header) do
-      # {:ok, generation} <- get_generation_by_height(height),
-      # do
+         pof <- PoF.check_for_fraud(get_generation_prev_hashes(), header) do
+      IO.inspect(pof)
+      IO.inspect(get_generation_prev_hashes)
+
       add_validated_block(
         block,
         prev_block_chain_state,
@@ -399,6 +412,13 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call(
+        :get_generation_prev_hashes,
+        _from,
+        %{generation_prev_hashes: generation_prev_hashes} = state
+      ),
+      do: {:reply, generation_prev_hashes, state}
+
+  def handle_call(
         {:get_block_info_from_memory_unsafe, block_hash},
         _from,
         %{blocks_data_map: blocks_data_map} = state
@@ -415,7 +435,7 @@ defmodule Aecore.Chain.Worker do
   def handle_call(
         {:add_validated_block,
          %{
-           header: %{prev_key_hash: prev_key_hash, height: height} = header
+           header: %{prev_key_hash: prev_key_hash, height: height, time: time} = header
          } = new_block, prev_chain_state, new_chain_state, pof, loop_micro_blocks},
         _from,
         %{
@@ -423,7 +443,8 @@ defmodule Aecore.Chain.Worker do
           top_height: top_height,
           total_diff: total_diff,
           node_is_leader: node_is_leader,
-          generation_fees: generation_fees
+          generation_fees: generation_fees,
+          generation_prev_hashes: generation_prev_hashes
         } = state
       ) do
     block_is_genesis = new_block == Genesis.block()
@@ -435,20 +456,20 @@ defmodule Aecore.Chain.Worker do
 
     new_block_hash = HeaderUtils.hash(header)
 
-    {new_total_diff, new_node_is_leader} =
+    {new_total_diff, new_node_is_leader, new_generation_prev_hashes} =
       case new_block do
         %KeyBlock{header: %KeyHeader{target: target, miner: miner}} ->
           new_total_diff = total_diff + Scientific.target_to_difficulty(target)
           {node_key, _} = Keys.keypair(:sign)
           is_leader = miner == node_key
+          {new_total_diff, is_leader, %{}}
 
-          {new_total_diff, is_leader}
-
-        %MicroBlock{txs: txs} ->
+        %MicroBlock{header: %MicroHeader{prev_hash: prev_hash}, txs: txs} ->
           # remove txs from pool while we're here as well
           Enum.each(txs, fn tx -> Pool.remove_transaction(tx) end)
+          new_generation_prev_hashes = Map.put(generation_prev_hashes, prev_hash, new_block_hash)
           # micro blocks don't have any difficulty weight, total stays the same
-          {total_diff, node_is_leader}
+          {total_diff, node_is_leader, new_generation_prev_hashes}
       end
 
     if loop_micro_blocks && new_node_is_leader do
@@ -482,7 +503,8 @@ defmodule Aecore.Chain.Worker do
       state
       | blocks_data_map: hundred_blocks_data_map,
         node_is_leader: new_node_is_leader,
-        generation_fees: new_generation_fees
+        generation_fees: new_generation_fees,
+        generation_prev_hashes: new_generation_prev_hashes
     }
 
     if top_height <= height && !block_is_genesis do

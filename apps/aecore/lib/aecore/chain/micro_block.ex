@@ -2,7 +2,7 @@ defmodule Aecore.Chain.MicroBlock do
   @moduledoc """
   Module defining the MicroBlock structure
   """
-  alias Aecore.Chain.{MicroBlock, MicroHeader, KeyBlock, KeyHeader, BlockValidation}
+  alias Aecore.Chain.{MicroBlock, MicroHeader, KeyBlock, KeyHeader, BlockValidation, PoF}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Tx.SignedTx
@@ -10,10 +10,11 @@ defmodule Aecore.Chain.MicroBlock do
 
   @type t :: %MicroBlock{
           header: MicroHeader.t(),
-          txs: list(SignedTx.t())
+          txs: list(SignedTx.t()),
+          proof_of_fraud: PoF.t()
         }
 
-  defstruct [:header, :txs]
+  defstruct [:header, :txs, :proof_of_fraud]
 
   @spec validate(MicroBlock.t(), KeyBlock.t() | MicroBlock.t()) :: :ok | {:error, String.t()}
   def validate(
