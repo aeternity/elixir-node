@@ -371,8 +371,6 @@ defmodule Aecore.Miner.Worker do
 
     block = %MicroBlock{header: header_with_signature, txs: valid_txs_by_fee}
 
-    # :timer.sleep(minimum_distance)
-
     Chain.add_block(block, loop_micro_blocks)
   end
 

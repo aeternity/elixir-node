@@ -3,12 +3,9 @@ defmodule Aecore.Chain.BlockValidation do
   Contains functions used to validate data inside of the block structure
   """
 
-  alias Aecore.Chain.{KeyBlock, MicroBlock, Chainstate, Genesis, KeyHeader, MicroHeader, Target}
-  alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Keys
+  alias Aecore.Chain.{KeyBlock, MicroBlock, Chainstate, Genesis, KeyHeader, MicroHeader}
   alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Pow.Pow
-  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.{SignedTx}
   alias Aecore.Util.Header
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
@@ -30,10 +27,10 @@ defmodule Aecore.Chain.BlockValidation do
     block_specifically_valid =
       case new_block do
         %KeyBlock{} ->
-          validate_key_block(new_block, blocks_for_target_calculation)
+          KeyBlock.validate(new_block, blocks_for_target_calculation)
 
         %MicroBlock{} ->
-          validate_micro_block(new_block, previous_block)
+          MicroBlock.validate(new_block, previous_block)
       end
 
     is_genesis = new_block == Genesis.block() && previous_block == nil
@@ -70,98 +67,6 @@ defmodule Aecore.Chain.BlockValidation do
       {:error, _} = error ->
         error
     end
-  end
-
-  defp validate_key_block(
-         %KeyBlock{
-           header: %KeyHeader{target: target, time: time} = header
-         },
-         blocks_for_target_calculation
-       ) do
-    expected_target =
-      Target.calculate_next_target(
-        time,
-        blocks_for_target_calculation
-      )
-
-    cond do
-      target != expected_target ->
-        {:error, "#{__MODULE__}: Invalid block target"}
-
-      !is_solution_valid?(header) ->
-        {:error, "#{__MODULE__}: Invalid PoW solution"}
-
-      true ->
-        :ok
-    end
-  end
-
-  defp validate_micro_block(
-         %MicroBlock{
-           header:
-             %MicroHeader{time: new_time, signature: signature, txs_hash: txs_hash} = header,
-           txs: txs
-         },
-         %{
-           header: %{time: prev_block_time, prev_key_hash: prev_key_hash} = prev_header
-         } = prev_block
-       ) do
-    prev_key_block =
-      case prev_block do
-        %KeyBlock{} ->
-          prev_block
-
-        %MicroBlock{} ->
-          {:ok, key_block} = Chain.get_block(prev_key_hash)
-          key_block
-      end
-
-    # header was signed with this signature in mining
-    header_with_zero_signature = %{header | signature: <<0::512>>}
-
-    is_signature_valid =
-      header_with_zero_signature
-      |> MicroHeader.encode_to_binary()
-      |> Keys.verify(signature, prev_key_block.header.miner)
-
-    is_minimum_distance_met =
-      case prev_header do
-        %KeyHeader{} ->
-          new_time > prev_block_time
-
-        %MicroHeader{} ->
-          new_time >= prev_block_time + GovernanceConstants.micro_block_distance()
-      end
-
-    cond do
-      !is_minimum_distance_met ->
-        {:error, "#{__MODULE__}: Micro block too close to previous block"}
-
-      !is_signature_valid ->
-        {:error, "#{__MODULE__}: Invalid micro block signature"}
-
-      txs_hash != calculate_txs_hash(txs) ->
-        {:error, "#{__MODULE__}: Root hash of transactions does not match the one in header"}
-
-      true ->
-        :ok
-    end
-  end
-
-  @spec validate_block_transactions(MicroBlock.t()) :: list(boolean())
-  def validate_block_transactions(%MicroBlock{txs: txs}) do
-    Enum.map(txs, fn tx -> :ok == SignedTx.validate(tx) end)
-  end
-
-  @spec txs_meet_minimum_fee?(list(SignedTx.t()), Chainstate.t(), non_neg_integer()) :: boolean()
-  def txs_meet_minimum_fee?(txs, chain_state, block_height) do
-    Enum.all?(txs, fn %SignedTx{data: %DataTx{type: type} = data_tx} ->
-      type.is_minimum_fee_met?(
-        data_tx,
-        Map.get(chain_state, type.get_chain_state_name()),
-        block_height
-      )
-    end)
   end
 
   @spec calculate_txs_hash([]) :: binary()
@@ -217,19 +122,5 @@ defmodule Aecore.Chain.BlockValidation do
   defp valid_header_time?(%{header: %{time: time}}) do
     time <
       System.system_time(:milliseconds) + GovernanceConstants.time_validation_future_limit_ms()
-  end
-
-  @spec is_solution_valid?(KeyHeader.t()) :: boolean()
-  defp is_solution_valid?(%KeyHeader{} = header) do
-    server_pid = self()
-    work = fn -> Pow.verify(header) end
-
-    Task.start(fn ->
-      send(server_pid, {:worker_reply, self(), work.()})
-    end)
-
-    receive do
-      {:worker_reply, _from, verified?} -> verified?
-    end
   end
 end
