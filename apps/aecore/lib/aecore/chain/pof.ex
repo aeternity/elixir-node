@@ -22,5 +22,5 @@ defmodule Aecore.Chain.PoF do
     end
   end
 
-  def check_for_fraud(_generation, %KeyHeader{}), do: :no_fraud
+  def check_for_fraud(%KeyHeader{}), do: :no_fraud
 end

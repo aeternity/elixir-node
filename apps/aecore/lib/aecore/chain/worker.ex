@@ -95,6 +95,11 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_block_hash)
   end
 
+  @spec top_key_block_hash() :: binary()
+  def top_key_block_hash do
+    GenServer.call(__MODULE__, :top_key_block_hash)
+  end
+
   @spec top_height() :: non_neg_integer()
   def top_height do
     GenServer.call(__MODULE__, :top_height)
@@ -274,8 +279,9 @@ defmodule Aecore.Chain.Worker do
              prev_block_chain_state,
              blocks_for_target_calculation
            ),
-         {:ok, generation} <- get_generation_by_height(height),
-         pof <- PoF.check_for_fraud(generation, block.header) do
+         pof <- PoF.check_for_fraud(new_header) do
+      # {:ok, generation} <- get_generation_by_height(height),
+      # do
       add_validated_block(
         block,
         prev_block_chain_state,
@@ -352,6 +358,20 @@ defmodule Aecore.Chain.Worker do
     {:reply, top_hash, state}
   end
 
+  def handle_call(
+        :top_key_block_hash,
+        _from,
+        %{top_hash: top_hash, blocks_data_map: blocks_data_map} = state
+      ) do
+    case blocks_data_map[top_hash].block do
+      %KeyBlock{} ->
+        {:reply, top_hash, state}
+
+      %MicroBlock{header: %{prev_key_hash: key_hash}} ->
+        {:reply, key_hash, state}
+    end
+  end
+
   def handle_call(:top_height, _from, %{top_height: top_height} = state) do
     {:reply, top_height, state}
   end
@@ -395,7 +415,7 @@ defmodule Aecore.Chain.Worker do
   def handle_call(
         {:add_validated_block,
          %{
-           header: %{prev_hash: prev_hash, height: height} = header
+           header: %{prev_key_hash: prev_key_hash, height: height} = header
          } = new_block, prev_chain_state, new_chain_state, pof, loop_micro_blocks},
         _from,
         %{
@@ -440,7 +460,8 @@ defmodule Aecore.Chain.Worker do
     # refs_list is generated so it contains n-th prev blocks for n-s being a power of two.
     # So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A].
     # This allows for log n finding of block with a given height.
-    new_refs = refs(@max_refs, blocks_data_map, prev_hash)
+
+    new_refs = refs(@max_refs, blocks_data_map, prev_key_hash)
 
     updated_blocks_data_map =
       Map.put(blocks_data_map, new_block_hash, %{
@@ -702,7 +723,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp get_block_info_by_height(height, nil, info) do
-    get_block_info_by_height(height, top_block_hash(), info)
+    get_block_info_by_height(height, top_key_block_hash(), info)
   end
 
   defp get_block_info_by_height(height, begin_hash, info) do
