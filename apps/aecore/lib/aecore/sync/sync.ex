@@ -9,7 +9,7 @@ defmodule Aecore.Sync.Sync do
   use GenServer
 
   alias Aecore.Sync.{Jobs, Chain, Task, Sync}
-  alias Aecore.Chain.{Header, Block}
+  alias Aecore.Chain.{Header, MicroBlock, KeyBlock}
   alias Aecore.Chain.Worker, as: Chainstate
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker, as: Peers
@@ -257,8 +257,7 @@ defmodule Aecore.Sync.Sync do
     # FUTURE: Forward blocks only to outbound connections.
     # Take a random subset (possibly empty) of peers that agree with us
     # on chain height to forward blocks and transactions to.
-    max_gossip = max_gossip()
-    peer_ids = Peers.get_random(max_gossip)
+    peer_ids = Peers.get_random(max_gossip())
     non_syncing_peer_ids = Enum.filter(peer_ids, fn pid -> not peer_in_sync?(state, pid) end)
 
     case event do
@@ -601,9 +600,17 @@ defmodule Aecore.Sync.Sync do
   @doc """
   Forwards a tx to the specified peer
   """
-  @spec forward_block(Block.t(), peer_id()) :: :ok | :error
-  def forward_block(block, peer_id) do
+  @spec forward_block(KeyBlock.t() | MicroBlock.t(), peer_id()) :: :ok | :error
+  def forward_block(%KeyBlock{} = block, peer_id) do
     PeerConnection.send_new_block(block, peer_id)
+  end
+
+  def forward_block(%MicroBlock{} = micro_block, peer_id) do
+    PeerConnection.send_new_block(micro_block, peer_id)
+  end
+
+  def forward_block(data, _peer_id) do
+    {:error, "#{__MODULE__}: Expected Key Block or Micro Block , got: #{inspect(data)} "}
   end
 
   @doc """

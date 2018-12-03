@@ -3,8 +3,15 @@ defmodule Aecore.Sync.JobsQueues do
     time = :erlang.system_time(:microsecond)
 
     case :jobs.ask(queue) do
-      {:ok, opaque} -> true
-      _ -> false
+      {:ok, opaque} ->
+        log_outcome(queue, :accepted, time)
+
+      {:error, reason} ->
+        log_outcome(queue, :rejected, time)
     end
+  end
+
+  def log_outcome(queue, result, time) when result == :rejected or result == :accepted do
+    t1 = :erlang.system_time(:microsecond)
   end
 end

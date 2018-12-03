@@ -38,10 +38,12 @@ defmodule Aecore.Peers.PeerConnection do
   @get_mempool 13
   @mempool 9
   @tx_pool_sync_init 20
-  @tx_pool_sync_unfold 21
+  @key_block 10
+  @micro_block 11
   @tx_pool_sync_get 22
   @tx_pool_sync_finish 23
 
+  @tx_pool_sync_unfold 21
   @max_packet_size 0x1FF
   @fragment_size 0x1F9
   @fragment_size_bits @fragment_size * 8
@@ -141,10 +143,16 @@ defmodule Aecore.Peers.PeerConnection do
     |> send_request_msg(pid)
   end
 
-  @spec send_new_block(Block.t(), pid()) :: :ok | :error
-  def send_new_block(block, pid) when is_pid(pid) do
-    @block
-    |> pack_msg(block)
+  @spec send_new_block(KeyBlock.t() | MicroBlock.t(), pid()) :: :ok | :error
+  def send_new_block(%KeyBlock{} = key_block, pid) when is_pid(pid) do
+    @key_block
+    |> pack_msg(key_block)
+    |> send_msg_no_response(pid)
+  end
+
+  def send_new_block(%MicroBlock{} = micro_block, pid) when is_pid(pid) do
+    @micro_block
+    |> pack_msg(micro_block)
     |> send_msg_no_response(pid)
   end
 
@@ -290,7 +298,10 @@ defmodule Aecore.Peers.PeerConnection do
       @mempool ->
         handle_mempool(deserialized_payload)
 
-      @block ->
+      @key_block ->
+        spawn(fn -> handle_new_block(deserialized_payload) end)
+
+      @micro_block ->
         spawn(fn -> handle_new_block(deserialized_payload) end)
 
       @tx_pool_sync_init ->
@@ -403,8 +414,15 @@ defmodule Aecore.Peers.PeerConnection do
     ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), hash])
   end
 
-  def rlp_encode(@block, block) do
-    ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), Block.rlp_encode(block)])
+  def rlp_encode(@key_block, block) do
+    ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), KeyBlock.encode_to_binary(block)])
+  end
+
+  def rlp_encode(@micro_block, block) do
+    ExRLP.encode([
+      :binary.encode_unsigned(@p2p_msg_version),
+      MicroBlock.encode_to_binary(block, :light)
+    ])
   end
 
   def rlp_encode(@get_mempool, _data) do
@@ -555,14 +573,23 @@ defmodule Aecore.Peers.PeerConnection do
     %{hash: block_hash}
   end
 
-  def rlp_decode(@block, encoded_block) do
+  def rlp_decode(@key_block, encoded_block) do
     [
       _vsn,
       block
     ] = ExRLP.decode(encoded_block)
 
-    {:ok, deserialized_block} = Block.rlp_decode(block)
+    {:ok, deserialized_block} = KeyBlock.decode_from_binary(block)
     %{block: deserialized_block}
+    # TODO Might need additional research on this return value
+  end
+
+  def rlp_decode(@micro_block, encoded_micro_block) do
+    [_vsn, micro_block] = ExRLP.decode(encoded_micro_block)
+    # TODO Adjust microblock serializations to serialize light micro blocks too
+    {:ok, deserialized_micro_block} = MicroBlock.decode_from_binary(micro_block, :light)
+    %{micro_block: deserialized_micro_block}
+    # TODO Might need additional research on return value
   end
 
   def rlp_decode(@get_mempool, _data) do
@@ -606,16 +633,6 @@ defmodule Aecore.Peers.PeerConnection do
   @spec gossip_serialize_tx(SignedTx.t()) :: binary()
   def gossip_serialize_tx(tx) do
     SignedTx.rlp_encode(tx)
-  end
-
-  def gossip_serialize_block(%MicroBlock{} = micro_block) do
-    {:light_micro_block, MicroBlock.encode_to_binary(micro_block)}
-    # TODO should be light microblock serialization instead
-    # https://github.com/aeternity/epoch/blob/v1.0.0/apps/aecore/src/aec_peer_connection.erl#L1204
-  end
-
-  def gossip_serialize_block(%KeyBlock{header: header}) do
-    {:key_block, KeyHeader.encode_to_binary(header)}
   end
 
   defp do_ping(%{status: {:connected, socket}}) do
@@ -850,7 +867,13 @@ defmodule Aecore.Peers.PeerConnection do
     Enum.each(txs, fn tx -> Pool.add_transaction(tx) end)
   end
 
-  defp handle_new_block(%{block: block}) do
+  defp handle_new_block(%{block: %KeyBlock{} = block}) do
+    # TODO Adjust this function call after implementing functionality for adding key/micro block
+    Chain.add_block(block)
+  end
+
+  defp handle_new_block(%{block: %MicroBlock{} = block}) do
+    # TODO Adjust this function call after implementing functionality for adding key/micro block
     Chain.add_block(block)
   end
 

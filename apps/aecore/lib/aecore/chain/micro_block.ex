@@ -17,12 +17,21 @@ defmodule Aecore.Chain.MicroBlock do
 
   @rlp_tag 101
 
-  def encode_to_binary(%MicroBlock{header: header, txs: txs}) do
+  def encode_to_binary(%MicroBlock{header: header, txs: txs}, type \\ :micro) do
     encoded_header = MicroHeader.encode_to_binary(header)
 
     encoded_txs =
-      for tx <- txs do
-        SignedTx.rlp_encode(tx)
+      case type do
+        # TODO implement variant with light micro block deserialization
+        :light ->
+          for tx <- txs do
+            SignedTx.hash_tx(tx)
+          end
+
+        _ ->
+          for tx <- txs do
+            SignedTx.rlp_encode(tx)
+          end
       end
 
     # TODO implement PoF
