@@ -44,8 +44,7 @@ defmodule Aecore.Mixfile do
         :rox,
         :exconstructor,
         :ranch,
-        :jobs,
-        :exometer
+        :jobs
       ],
       mod: {Aecore, []}
     ]
@@ -76,8 +75,9 @@ defmodule Aecore.Mixfile do
       {:gproc, "~> 0.6.1"},
       {:enoise, github: "aeternity/enoise", ref: "6d793b7"},
       {:aevm, in_umbrella: true},
-      {:merkle_patricia_tree, github: "aeternity/elixir-merkle-patricia-tree", tag: "v0.1.0"}
-      # {:exometer, github: "Feuerlabs/exometer", override: true},
+      {:merkle_patricia_tree, github: "aeternity/elixir-merkle-patricia-tree", tag: "v0.1.0"},
+      {:exometer_core, "~> 1.5"},
+      {:setup, "1.8.4", override: true, manager: :rebar}
     ]
   end
 end

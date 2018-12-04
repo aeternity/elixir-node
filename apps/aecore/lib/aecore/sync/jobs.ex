@@ -17,6 +17,7 @@ defmodule Aecore.Sync.Jobs do
   alias Aecore.Chain.{KeyBlock, MicroBlock}
   alias Aecore.Tx.SignedTx
   alias Aecore.Peers.PeerConnection
+  alias Aecore.Sync.JobsQueues
 
   @type peer_id :: pid()
   @type delay :: non_neg_integer()
@@ -49,7 +50,7 @@ defmodule Aecore.Sync.Jobs do
     {:ok, new_worker} =
       Task.start(fn ->
         :timer.sleep(delay)
-        :jobs.run(queue, fun)
+        JobsQueues.run(queue, fun)
       end)
 
     {task, {:change_worker, peer_id, old_worker, new_worker}}
@@ -70,7 +71,7 @@ defmodule Aecore.Sync.Jobs do
   def enqueue(:tx, %SignedTx{} = data, peer_ids) do
     Task.start(fn ->
       Enum.map(peer_ids, fn peer_id ->
-        :jobs.run(:sync_gossip_workers, enqueue_strategy(:tx, data, peer_id))
+        JobsQueues.run(:sync_gossip, fn -> enqueue_strategy(:tx, data, peer_id) end)
       end)
     end)
   end
