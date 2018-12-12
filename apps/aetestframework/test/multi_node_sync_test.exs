@@ -72,6 +72,42 @@ defmodule MultiNodeSyncTest do
     assert same_top_header_hash() == true
   end
 
+  @tag :sync_test_garbage_collection
+  test "pool garbage_collection test" do
+    # height = 1
+    Utils.mine_blocks(1, :node1)
+
+    # Add spend_tx, which expires at 3rd block height, to the pool from node2
+    TestFramework.post(Utils.simulate_spend_tx_cmd(), :spend_tx_cmd, :node2)
+
+    # Check if the tx is added to the pool height = 1
+    assert transaction_added_to_pool(SpendTx)
+
+    # Node1 mines one block
+    # height = 2
+    Utils.mine_blocks(1, :node1)
+
+    # Check the tx is present in the pool, at block height = 2
+    assert transaction_added_to_pool(SpendTx)
+
+    # Node1 mines one block
+    # height = 3
+    Utils.mine_blocks(1, :node1)
+
+    # Check the tx is present in the pool, at block height = 3
+    assert transaction_added_to_pool(SpendTx)
+
+    # Node1 mines one block
+    # height = 4
+    Utils.mine_blocks(1, :node1)
+
+    # The pool should be empty
+    assert Enum.empty?(TestFramework.get(Utils.pool_cmd(), :pool_cmd, :node1))
+
+    # Check the tx is not mined
+    assert Enum.empty?(TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node1).txs)
+  end
+
   @tag :sync_test_oracles
   @tag timeout: 100_000
   test "oracles test" do
@@ -116,7 +152,7 @@ defmodule MultiNodeSyncTest do
 
     # Make a OracleRespond transaction and add it to the pool
     TestFramework.post(
-      Utils.oracle_respond_cmd(sender, nonce, oracle_address),
+      Utils.oracle_respond_cmd(sender, response_ttl, nonce, oracle_address),
       :oracle_respond_cmd,
       :node2
     )

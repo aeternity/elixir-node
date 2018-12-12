@@ -7,12 +7,15 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @micro_block_distance 3000
 
-  @number_of_blocks_for_target_recalculation 10
+  @number_of_blocks_for_target_recalculation 17
 
   # 60sec * 1000ms * 5 = 300_000ms
   @expected_mine_rate_ms 300_000
 
   @coinbase_transaction_amount 10_000_000_000_000_000_000
+  @current_generation_fee_reward_multiplier 0.4
+  @previous_generation_fee_reward_multiplier 0.6
+  @beneficiary_reward_lock_time 180
 
   @minimum_fee 1
 
@@ -21,6 +24,8 @@ defmodule Aecore.Governance.GovernanceConstants do
   @oracle_response_base_fee 2
   @oracle_extend_base_fee 1
 
+  @block_gas_limit 6_000_000
+
   @oracle_ttl_fee_per_block 0.001
 
   # 30min
@@ -28,7 +33,7 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @split_name_symbol "."
 
-  @name_registrars [@split_name_symbol <> "aet", @split_name_symbol <> "test"]
+  @name_registrars [@split_name_symbol <> "test"]
 
   @pre_claim_ttl 300
 
@@ -43,6 +48,30 @@ defmodule Aecore.Governance.GovernanceConstants do
   @name_claim_burned_fee 3
 
   @max_txs_per_block 10_946
+
+  @default_tx_gas_price 15_000
+
+  @known_tx_types [
+    Aecore.Account.Tx.SpendTx,
+    Aecore.Channel.Tx.ChannelCloseMutualTx,
+    Aecore.Channel.Tx.ChannelCloseSoloTx,
+    Aecore.Channel.Tx.ChannelCreateTx,
+    Aecore.Channel.Tx.ChannelDepositTx,
+    Aecore.Channel.Tx.ChannelSettleTx,
+    Aecore.Channel.Tx.ChannelSlashTx,
+    Aecore.Channel.Tx.ChannelWithdrawTx,
+    Aecore.Contract.Tx.ContractCallTx,
+    Aecore.Contract.Tx.ContractCreateTx,
+    Aecore.Naming.Tx.NameClaimTx,
+    Aecore.Naming.Tx.NamePreClaimTx,
+    Aecore.Naming.Tx.NameRevokeTx,
+    Aecore.Naming.Tx.NameTransferTx,
+    Aecore.Naming.Tx.NameUpdateTx,
+    Aecore.Oracle.Tx.OracleExtendTx,
+    Aecore.Oracle.Tx.OracleQueryTx,
+    Aecore.Oracle.Tx.OracleRegistrationTx,
+    Aecore.Oracle.Tx.OracleResponseTx
+  ]
 
   # getter functions with same name for use in other modules
 
@@ -60,6 +89,15 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @spec coinbase_transaction_amount :: non_neg_integer()
   def coinbase_transaction_amount, do: @coinbase_transaction_amount
+
+  @spec current_generation_fee_reward_multiplier :: float()
+  def current_generation_fee_reward_multiplier, do: @current_generation_fee_reward_multiplier
+
+  @spec previous_generation_fee_reward_multiplier :: float()
+  def previous_generation_fee_reward_multiplier, do: @previous_generation_fee_reward_multiplier
+
+  @spec beneficiary_reward_lock_time :: non_neg_integer()
+  def beneficiary_reward_lock_time, do: @beneficiary_reward_lock_time
 
   @spec minimum_fee :: non_neg_integer()
   def minimum_fee, do: @minimum_fee
@@ -108,4 +146,13 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @spec max_txs_per_block :: non_neg_integer()
   def max_txs_per_block, do: @max_txs_per_block
+
+  @spec block_gas_limit :: non_neg_integer()
+  def block_gas_limit, do: @block_gas_limit
+
+  @spec default_tx_gas_price :: non_neg_integer()
+  def default_tx_gas_price, do: @default_tx_gas_price
+
+  @spec default_tx_gas_price :: list()
+  def get_valid_txs_type, do: @known_tx_types
 end

@@ -15,6 +15,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   require Aecore.Contract.ContractConstants, as: Constants
 
   @version 1
+  @gas_price_multiplier 5
 
   @typedoc "Reason of the error"
   @type reason :: String.t()
@@ -251,6 +252,11 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
     fee >= GovernanceConstants.minimum_fee()
+  end
+
+  @spec gas_price :: non_neg_integer()
+  def gas_price do
+    GovernanceConstants.default_tx_gas_price() * @gas_price_multiplier
   end
 
   @spec encode_to_list(ContractCreateTx.t(), DataTx.t()) :: list()

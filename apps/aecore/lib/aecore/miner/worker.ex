@@ -303,23 +303,31 @@ defmodule Aecore.Miner.Worker do
   end
 
   @spec generate_and_add_micro_block(
+          non_neg_integer(),
+          binary(),
+          binary(),
           Chainstate.t(),
-          binary(),
-          binary(),
           non_neg_integer(),
           boolean()
         ) :: :ok | {:error, String.t()}
   def generate_and_add_micro_block(
-        chain_state,
+        candidate_height,
         prev_hash,
         prev_key_hash,
-        last_time,
+        chain_state,
+        previous_time,
         loop_micro_blocks
       ) do
+    minimum_distance =
+      if prev_hash == prev_key_hash do
+        @minimum_distance_from_key_block
+      else
+        GovernanceConstants.micro_block_distance()
+      end
+
+    :timer.sleep(minimum_distance)
     txs_list = get_pool_values()
     ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
-
-    candidate_height = Chain.top_height()
 
     valid_txs_by_chainstate =
       Chainstate.get_valid_txs(ordered_txs_list, chain_state, candidate_height)
@@ -329,6 +337,7 @@ defmodule Aecore.Miner.Worker do
 
     txs_hash = BlockValidation.calculate_txs_hash(valid_txs_by_fee)
 
+    # Only need the block txs for chainstate calculation
     {:ok, new_chain_state} =
       Chainstate.calculate_and_validate_chain_state(
         %MicroBlock{txs: valid_txs_by_fee},
@@ -341,14 +350,8 @@ defmodule Aecore.Miner.Worker do
 
     # if the previous block is a key block - the time should just be higher,
     # if it's a micro block - atleast 3 seconds higher
-    minimum_distance =
-      if prev_hash == prev_key_hash do
-        @minimum_distance_from_key_block
-      else
-        GovernanceConstants.micro_block_distance()
-      end
 
-    time = max(current_time, last_time + minimum_distance)
+    time = max(current_time, previous_time + minimum_distance)
 
     header = %MicroHeader{
       height: candidate_height,
@@ -367,8 +370,6 @@ defmodule Aecore.Miner.Worker do
     header_with_signature = %{header | signature: signature}
 
     block = %MicroBlock{header: header_with_signature, txs: valid_txs_by_fee}
-
-    :timer.sleep(minimum_distance)
 
     Chain.add_block(block, loop_micro_blocks)
   end
@@ -449,9 +450,10 @@ defmodule Aecore.Miner.Worker do
   end
 
   defp create_block(top_block, chain_state, target, timestamp, miner_pubkey, beneficiary) do
+    # Don't need an actual block for chainstate calculation, just need to mock the type
     {:ok, new_chain_state} =
       Chainstate.calculate_and_validate_chain_state(
-        top_block,
+        %KeyBlock{header: %KeyHeader{}},
         chain_state,
         top_block.header.height + 1
       )

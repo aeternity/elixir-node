@@ -39,7 +39,7 @@ defmodule Aeutil.TypeToTag do
   # Channel off-chain update create contract - 573
   # Channel off-chain update call contract - 574
   def tag_to_type(58), do: {:ok, Aecore.Channel.ChannelStateOnChain}
-  # Channel snapshot transaction - 59
+  def tag_to_type(59), do: {:ok, Aecore.Channel.Tx.ChannelSnapshotSoloTx}
   def tag_to_type(60), do: {:ok, Aecore.Poi.Poi}
   # Non Epoch tags:
   def tag_to_type(100), do: {:ok, Aecore.Chain.Block}
@@ -81,7 +81,7 @@ defmodule Aeutil.TypeToTag do
   # Channel off-chain update create contract - 573
   # Channel off-chain update call contract - 574
   def type_to_tag(Aecore.Channel.ChannelStateOnChain), do: {:ok, 58}
-  # Channel snapshot transaction - 59
+  def type_to_tag(Aecore.Channel.Tx.ChannelSnapshotSoloTx), do: {:ok, 59}
   def type_to_tag(Aecore.Poi.Poi), do: {:ok, 60}
   # Non Epoch tags
   def type_to_tag(Aecore.Chain.Block), do: {:ok, 100}

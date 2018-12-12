@@ -151,7 +151,8 @@ defmodule AecoreSerializationTest do
           owner: %Identifier{value: "", type: :oracle},
           query_fee: 5,
           query_format: "foo: bar",
-          response_format: "boolean"
+          response_format: "boolean",
+          vm_version: 0
         }
 
       OracleQuery ->
@@ -164,7 +165,7 @@ defmodule AecoreSerializationTest do
               75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
           query: "foo: bar",
           response: :undefined,
-          response_ttl: 86_000,
+          response_ttl: %{ttl: 86_000, type: :relative},
           sender_address:
             <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
               75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
@@ -181,25 +182,25 @@ defmodule AecoreSerializationTest do
         block
 
       NamePreClaimTx ->
-        Account.pre_claim("test.aet", 123, 50).data
+        Account.pre_claim("test.test", 123, 50).data
 
       NameClaimTx ->
-        Account.claim("test.aet", 123, 50).data
+        Account.claim("test.test", 123, 50).data
 
       NameUpdateTx ->
-        Account.name_update("test.aet", "{\"test\": 2}", 50, 5000, 50).data
+        Account.name_update("test.test", "{\"test\": 2}", 50, 5000, 50).data
 
       NameTransferTx ->
         transfer_to_pub = acc2_pub
 
-        Account.name_transfer("test.aet", transfer_to_pub, 50).data
+        Account.name_transfer("test.test", transfer_to_pub, 50).data
 
       NameRevokeTx ->
         transfer_to_priv = acc2_priv
         transfer_to_pub = acc2_pub
         next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
 
-        Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 50, next_nonce).data
+        Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.test", 50, next_nonce).data
 
       Name ->
         %Name{

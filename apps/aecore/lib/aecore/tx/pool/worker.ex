@@ -34,12 +34,17 @@ defmodule Aecore.Tx.Pool.Worker do
 
   @spec remove_transaction(SignedTx.t()) :: :ok
   def remove_transaction(tx) do
-    GenServer.call(__MODULE__, {:remove_transaction, tx})
+    GenServer.cast(__MODULE__, {:remove_transaction, tx})
   end
 
   @spec get_pool() :: tx_pool()
   def get_pool do
     GenServer.call(__MODULE__, :get_pool)
+  end
+
+  @spec garbage_collection(non_neg_integer()) :: :ok
+  def garbage_collection(top_height) do
+    GenServer.cast(__MODULE__, {:garbage_collection, top_height})
   end
 
   @spec get_and_empty_pool() :: tx_pool()
@@ -59,7 +64,11 @@ defmodule Aecore.Tx.Pool.Worker do
     {:reply, txs_list, state}
   end
 
-  def handle_call({:add_transaction, %SignedTx{data: %DataTx{fee: fee}} = tx}, _from, tx_pool) do
+  def handle_call(
+        {:add_transaction, %SignedTx{data: %DataTx{fee: fee, ttl: ttl}} = tx},
+        _from,
+        tx_pool
+      ) do
     cond do
       :ok != SignedTx.validate(tx) ->
         {:error, reason} = SignedTx.validate(tx)
@@ -68,6 +77,10 @@ defmodule Aecore.Tx.Pool.Worker do
 
       fee < GovernanceConstants.minimum_fee() ->
         Logger.error("#{__MODULE__}: Fee: #{fee} is too low")
+        {:reply, :error, tx_pool}
+
+      Chain.top_height() > ttl && ttl != 0 ->
+        Logger.error("#{__MODULE__}: TTL: #{ttl} is expired")
         {:reply, :error, tx_pool}
 
       true ->
@@ -90,17 +103,30 @@ defmodule Aecore.Tx.Pool.Worker do
     end
   end
 
-  def handle_call({:remove_transaction, tx}, _from, tx_pool) do
-    {_, updated_pool} = Map.pop(tx_pool, SignedTx.hash_tx(tx))
-    {:reply, :ok, updated_pool}
-  end
-
   def handle_call(:get_pool, _from, tx_pool) do
     {:reply, tx_pool, tx_pool}
   end
 
   def handle_call(:get_and_empty_pool, _from, tx_pool) do
     {:reply, tx_pool, %{}}
+  end
+
+  def handle_cast({:remove_transaction, tx}, tx_pool) do
+    {_, updated_pool} = Map.pop(tx_pool, SignedTx.hash_tx(tx))
+    {:noreply, updated_pool}
+  end
+
+  def handle_cast({:garbage_collection, top_height}, tx_pool) do
+    updated_pool =
+      Enum.reduce(tx_pool, %{}, fn {key, tx}, acc ->
+        if tx.data.ttl >= top_height || tx.data.ttl == 0 do
+          Map.put(acc, key, tx)
+        else
+          acc
+        end
+      end)
+
+    {:noreply, updated_pool}
   end
 
   @spec get_tx_size_bytes(SignedTx.t()) :: non_neg_integer()
